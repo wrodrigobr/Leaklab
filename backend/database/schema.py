@@ -662,6 +662,12 @@ def _run_migrations(conn):
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS field_size INTEGER",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prize_pool REAL",
             "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS re_entries INTEGER",
+            # De onde vem o financeiro: 'arquivo' (Tournament Summary) ou 'manual' (o jogador
+            # digitou). Existe porque o PartyPoker nao publica summary que saibamos ler, e sem
+            # um caminho manual aqueles torneios ficam para sempre com "resultado desconhecido".
+            # A coluna e o que impede o digitado de se passar por dado de arquivo: o ROI e o
+            # bankroll saem dela, e o jogador precisa saber qual numero depende do que ele digitou.
+            "ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS financeiro_origem TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS position    TEXT",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS num_players INTEGER",
             "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS level_sb    REAL",
@@ -1497,6 +1503,8 @@ def _run_migrations(conn):
             ("field_size",      "ALTER TABLE tournaments ADD COLUMN field_size INTEGER"),
             ("prize_pool",      "ALTER TABLE tournaments ADD COLUMN prize_pool REAL"),
             ("re_entries",      "ALTER TABLE tournaments ADD COLUMN re_entries INTEGER"),
+            # ver o comentario no bloco do Postgres: procedencia do financeiro
+            ("financeiro_origem", "ALTER TABLE tournaments ADD COLUMN financeiro_origem TEXT"),
         ]:
             if col not in existing:
                 try: conn.execute(sql)

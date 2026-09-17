@@ -56,7 +56,58 @@ describe("coluna de prêmio — sala sem resumo de torneio", () => {
     // O botão de upload da ACR é o outro ramo do mesmo ternário: se ele cair, quem tem `.ots`
     // perde o caminho de completar a premiação.
     expect(src, "o ramo do upload da ACR desapareceu").toContain('site === "acr"');
-    expect(src).toContain("results.semResultado");
+  });
+
+  it("a sala sem resumo OFERECE o preenchimento manual, e não é mais beco sem saída", () => {
+    // ── A decisão mudou em 17/09 ────────────────────────────────────────────────────────────
+    //
+    // Este arquivo dizia que havia duas saídas erradas (deixar um traço, ou oferecer um upload
+    // que não existe) e que a terceira era DECLARAR a limitação. Declarar era melhor que as duas,
+    // e ainda assim era beco sem saída: o torneio de PartyPoker nunca teria ROI.
+    //
+    // O dono: "nao haviamos criado um meio de torneios do party poker, o usuario conseguir
+    // preencher os dados do summary que precisamos?". Agora o selo é um BOTÃO que abre o
+    // formulário, e o número digitado fica marcado como digitado.
+    //
+    // Este caso existe porque o guarda anterior passou VERDE quando eu troquei o selo pelo botão:
+    // ele exigia `results.semResultado` no fonte, e `results.semResultadoHint` (que continuou lá,
+    // no `title`) contém aquela string como prefixo. Um `toContain` sobre nome de chave casa
+    // prefixo, e foi assim que a mudança de desenho passou sem ninguém notar.
+    const src = readFileSync(TELA, "utf-8");
+    expect(src, "o botão de preencher não está na coluna de prêmio")
+      .toContain("abrir-resultado-manual");
+    expect(src, "o rótulo do botão não veio da copy").toContain("manual.preencher");
+    // a explicação de POR QUE não há arquivo continua, agora como `title` do botão
+    expect(src, "a explicação da sala sem resumo desapareceu").toContain("results.semResultadoHint");
+    // E a procedência aparece onde o número aparece. O guarda pede o COMPONENTE, e não a chave de
+    // copy: ela mora dentro dele, e o comportamento ("aparece só no digitado") tem teste próprio
+    // em `ResultadoManual.test.tsx`. Guarda textual sobre chave de i18n foi o que deixou a
+    // troca do selo pelo botão passar verde, aqui mesmo, algumas horas antes.
+    expect(src, "o número digitado não se distingue do número de arquivo")
+      .toContain("MarcaDeProcedencia");
+    expect(src).toContain("financeiro_origem");
+  });
+
+  it("a copy do formulário existe nas 3 locales, com os erros em português claro", () => {
+    for (const loc of LOCALES) {
+      const m = JSON.parse(readFileSync(`src/i18n/locales/${loc}/tournaments.json`, "utf-8")).manual;
+      expect(m, `${loc}: falta o bloco do formulário`).toBeTruthy();
+      for (const k of ["titulo", "colocacao", "jogadores", "buyIn", "premio", "lucro", "salvar",
+                       "avisoOrigem", "preencher", "digitado"]) {
+        expect(m[k], `${loc}: falta ${k}`).toBeTruthy();
+      }
+      // As mensagens de erro são FRASES, e não códigos: o dono foi explícito ("nao podemos
+      // retornar codigo de erro para o usuario, temos que ter o erro tratado").
+      for (const k of ["erroColocacao", "erroPremio", "erroBuyIn", "erroColocacaoMaior",
+                       "erroSalvar"]) {
+        expect(m[k], `${loc}: falta ${k}`).toBeTruthy();
+        expect(m[k].length, `${loc}: ${k} curto demais para explicar`).toBeGreaterThan(20);
+        expect(m[k], `${loc}: ${k} parece código`).not.toMatch(/\d{3}/);
+      }
+      // O aviso tem de dizer que o número entra no ROI e no bankroll: é o que justifica a marca
+      // de procedência na tela.
+      expect(m.avisoOrigem.toLowerCase(), `${loc}: o aviso não cita o ROI`).toContain("roi");
+    }
   });
 
   it("a copy existe nas 3 locales e diz o que se perde", () => {

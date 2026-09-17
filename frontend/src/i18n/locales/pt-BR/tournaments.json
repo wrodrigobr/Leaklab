@@ -337,5 +337,22 @@
     "legendaCompartilhado": "Leak presente em múltiplos torneios"
   },
   "selecionarComparar": "Selecionar para comparar",
-  "compareGuia": "Marque dois ou mais torneios na lista e clique em Comparar."
+  "compareGuia": "Marque dois ou mais torneios na lista e clique em Comparar.",
+  "manual": {
+    "titulo": "preencher o resultado",
+    "colocacao": "colocacao",
+    "jogadores": "jogadores",
+    "buyIn": "buy-in ($)",
+    "premio": "premio ($)",
+    "lucro": "lucro",
+    "salvar": "salvar resultado",
+    "avisoOrigem": "esta sala nao publica o resumo do torneio, entao estes numeros ficam marcados como preenchidos por voce. Eles entram no seu ROI e no seu bankroll.",
+    "erroColocacao": "Informe em que lugar voce terminou, comecando em 1.",
+    "erroPremio": "Informe o premio que voce recebeu. Se nao premiou, use 0.",
+    "erroBuyIn": "Informe quanto voce pagou para entrar, incluindo as re-entradas.",
+    "erroColocacaoMaior": "A colocacao nao pode ser maior que o numero de jogadores.",
+    "erroSalvar": "Nao foi possivel salvar agora. Tente de novo em instantes.",
+    "preencher": "preencher",
+    "digitado": "digitado por voce"
+  }
 }

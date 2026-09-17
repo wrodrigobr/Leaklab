@@ -5,6 +5,60 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O jogador preenche o resultado do torneio, quando a sala nao publica o resumo (17/09)
+
+O dono: "nao haviamos criado um meio de torneios do party poker, o usuario conseguir preencher os
+dados do summary que precisamos?". Nao haviamos. O `/tournament/results` le o Tournament Summary
+do PokerStars (.txt) e do ACR/WPN (.ots), e o PartyPoker nao esta entre eles -- o export da sala e
+`My Game -> Export Hands` e entrega so maos (conferido no arquivo real do Rullian: zero linha de
+colocacao ou premio em 157 mil linhas).
+
+A tela ja DECLARAVA isso, com um selo "sem resultado" e a explicacao no `title`, em vez de deixar
+um traco sem motivo. Declarar era melhor que as duas alternativas erradas (o traco mudo, ou um
+botao de upload que manda o jogador procurar arquivo que a sala nao gera), e ainda assim era beco
+sem saida: aqueles torneios nunca teriam ROI nem entrariam no bankroll.
+
+**Agora o selo e um botao que abre o formulario:** colocacao, numero de jogadores, buy-in e premio.
+
+**O lucro NAO e um campo.** Ele e `premio - buy-in`, calculado no servidor; a tela mostra a conta
+enquanto ele digita, para o numero nao ser surpresa depois de salvar. Tres valores digitados
+poderiam nao fechar entre si, e ninguem saberia qual deles o ROI usou. Um teste confere que o
+lucro que o cliente mandar no corpo e IGNORADO.
+
+**A hierarquia de confianca nao e simetrica, e isso e deliberado.** O arquivo vence o digitado: se
+o torneio ja tem financeiro de summary, o endpoint recusa com 409 e uma frase explicando, em vez de
+sobrescrever dado real por dado lembrado. O contrario vale -- subir o arquivo depois CORRIGE o que
+foi digitado. E digitado sobre digitado passa, porque ali ele esta consertando o que ele mesmo pos.
+
+**A procedencia fica gravada e VISIVEL.** A coluna `financeiro_origem` guarda `arquivo` ou
+`manual`, e a tabela mostra "digitado por voce" ao lado do lucro. O numero digitado sustenta o ROI
+e o bankroll igual ao que veio da sala, e quem digitou precisa saber qual dos dois esta olhando.
+
+── Dois guardas meus que passaram VERDE quando deviam falhar ─────────────────────────────────
+
+**O primeiro:** `tournamentsSemResultado.test.ts` protegia o selo exigindo a chave
+`results.semResultado` no fonte da tela. Eu troquei o selo pelo botao e o teste passou, porque
+`results.semResultadoHint` -- que continuou la, no `title` -- contem aquela string como prefixo.
+`toContain` sobre nome de chave casa prefixo, e foi assim que uma mudanca de desenho passou sem
+ninguem notar.
+
+**O segundo:** o guarda da marca de procedencia lia o fonte e exigia a palavra `financeiro_origem`
+nele. Quebrando a condicao de proposito (`false &&`), a palavra continuou no comentario e no tipo,
+e o guarda nao viu nada. A marca virou COMPONENTE proprio
+(`MarcaDeProcedencia`) com teste de comportamento: aparece no digitado, nao aparece no de arquivo.
+
+A licao das duas e a mesma, e ela e antiga nesta casa: guarda que le o fonte protege a grafia, nao
+o comportamento. Onde der para renderizar, renderize.
+
+── Um defeito que o teste achou, e a leitura nao ────────────────────────────────────────────
+
+`Number("")` e 0, nao `NaN`. Com os campos vazios, a linha do lucro dizia "$0.00" antes de o
+jogador digitar qualquer coisa -- afirmacao sobre um dado que nao existe, na mesma tela que este
+produto passou a semana consertando por afirmar sem base. Campo vazio agora e `null`, e o lucro
+mostra um traco.
+
+---
+
 ## O Pratica no celular: uma mesa, o painel de volta, e o limite declarado (17/09)
 
 O dono abriu no telefone e mandou a captura: quatro mesas minusculas em 2x2, os botoes da barra

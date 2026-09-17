@@ -1370,6 +1370,86 @@ def tournament_results():
     return jsonify(payload), status
 
 
+@app.route('/tournament/<tournament_id>/results/manual', methods=['POST'])
+@require_auth
+def tournament_results_manual(tournament_id):
+    """O jogador PREENCHE o resultado do torneio, quando nao ha arquivo de summary que saibamos ler.
+
+    ── Por que isto existe (17/09) ───────────────────────────────────────────────────────────
+
+    O dono: "nao haviamos criado um meio de torneios do party poker, o usuario conseguir preencher
+    os dados do summary que precisamos?". Nao haviamos: o `/tournament/results` le o Tournament
+    Summary do PokerStars (.txt) e do ACR/WPN (.ots), e o PartyPoker nao esta entre eles -- aqueles
+    torneios ficavam para sempre com "resultado desconhecido", e sem prize nao ha ROI nem bankroll.
+
+    ── A hierarquia de confianca, e por que ela nao e simetrica ──────────────────────────────
+
+    O ARQUIVO vence o digitado. Se o torneio ja tem financeiro de summary, este endpoint recusa em
+    vez de sobrescrever: o arquivo e a fonte real, e trocar por digitacao seria perder dado bom por
+    dado lembrado. O contrario vale: subir o arquivo depois CORRIGE o que foi digitado.
+
+    Digitado sobre digitado passa -- o jogador esta corrigindo o que ele mesmo pos.
+
+    ── O que NAO se aceita ───────────────────────────────────────────────────────────────────
+
+    Lucro. Ele e `prize - buy_in`, calculado aqui: aceitar os tres numeros deixaria entrar um
+    conjunto que nao fecha, e o jogador nunca saberia qual dos tres o ROI usou.
+    """
+    from database.repositories import get_tournament, update_tournament_financials
+    body = request.get_json(silent=True) or {}
+
+    tor = get_tournament(g.user_id, str(tournament_id))
+    if not tor:
+        return jsonify({'error': 'Torneio nao encontrado'}), 404
+    if (tor.get('financeiro_origem') or '') == 'arquivo':
+        return jsonify({
+            'error': 'Este torneio ja tem o resultado do arquivo da sala, que e a fonte mais '
+                     'confiavel. Para trocar, suba o arquivo de resultados de novo.'}), 409
+
+    def numero(chave, minimo=None, obrigatorio=True):
+        v = body.get(chave)
+        if v in (None, ''):
+            if obrigatorio:
+                raise ValueError('Preencha o campo "%s".' % chave)
+            return None
+        try:
+            f = float(str(v).replace(',', '.'))
+        except (TypeError, ValueError):
+            raise ValueError('O campo "%s" precisa ser um numero.' % chave)
+        if minimo is not None and f < minimo:
+            raise ValueError('O campo "%s" nao pode ser menor que %s.' % (chave, minimo))
+        return f
+
+    try:
+        place = numero('place', minimo=1)
+        prize = numero('prize', minimo=0)
+        buy_in = numero('buy_in', minimo=0)
+        field_size = numero('field_size', minimo=1, obrigatorio=False)
+    except ValueError as e:
+        # Mensagem tratada, e nao codigo de erro: "nao podemos retornar codigo de erro para o
+        # usuario, temos que ter o erro tratado" (o dono, 16/09).
+        return jsonify({'error': str(e)}), 422
+
+    if field_size and place > field_size:
+        return jsonify({'error': 'A colocacao nao pode ser maior que o numero de jogadores.'}), 422
+
+    ok = update_tournament_financials(
+        g.user_id, str(tournament_id),
+        buy_in=buy_in, prize=prize, profit=round(prize - buy_in, 2),
+        place=int(place), field_size=int(field_size) if field_size else None,
+        origem='manual')
+    if not ok:
+        return jsonify({'error': 'Torneio nao encontrado'}), 404
+
+    return jsonify({
+        'tournament_id': str(tournament_id),
+        'place': int(place), 'prize': prize, 'buy_in': buy_in,
+        'profit': round(prize - buy_in, 2),
+        'field_size': int(field_size) if field_size else None,
+        'financeiro_origem': 'manual',
+    }), 200
+
+
 def _analyze_impl(content_override: str | None = None, adiar_por_usuario: bool = False):
     # A quota é checada só DEPOIS de sabermos se é torneio novo (ver `existing` abaixo):
     # re-import/merge do mesmo T# (PokerStars quebra torneio longo em arquivos por dia)

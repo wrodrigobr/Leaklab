@@ -3,9 +3,10 @@ import { useAuth } from "@/lib/auth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { HudLayout } from "@/components/hud/HudLayout";
-import { AlertTriangle, ArrowUpDown, Ban, BarChart2, CheckCircle2, Clock, FileUp, Filter, GitCompareArrows, GraduationCap, Loader2, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Ban, BarChart2, CheckCircle2, Clock, FileUp, Filter, GitCompareArrows, GraduationCap, Loader2, Search, Trash2, Pencil } from "lucide-react";
 import { SiteLogo } from "@/components/hud/SiteLogo";
 import { salaSemResultado } from "@/lib/salas";
+import { MarcaDeProcedencia, ResultadoManual } from "@/components/hud/ResultadoManual";
 import { cn } from "@/lib/utils";
 import { tournaments as tournamentsApi, Tournament } from "@/lib/api";
 import { Pager } from "@/components/ui/Pager";
@@ -88,6 +89,9 @@ const Tournaments = () => {
   };
 
   useEffect(() => { reload(); }, []);
+
+  /** o torneio com o formulário de resultado aberto; `null` = fechado */
+  const [manual, setManual] = useState<Tournament | null>(null);
 
   // Arquivo de RESULTADOS (ACR/WPN .ots): complementa a premiação dos torneios sem resultado.
   // O 't' dentro do .map() das linhas sombreia o i18n → rótulos do botão pré-computados aqui.
@@ -194,14 +198,26 @@ const Tournaments = () => {
   // Sala que nao fornece o resumo do torneio DECLARA isso, em vez de deixar um traco sem
   // explicacao. Sem o resumo nao ha colocacao, premio nem ROI, e a sala nao oferece o arquivo:
   // um botao de upload aqui mandaria o jogador procurar o que nao existe. Ver `src/lib/salas.ts`.
-  const renderProfitOrUpload = (site: string, profit: number | null, positive: boolean) =>
+  const renderProfitOrUpload = (site: string, profit: number | null, positive: boolean,
+                                torneio?: Tournament) =>
+    // ── A sala sem resumo deixou de ser beco sem saida (17/09) ─────────────────────────────
+    //
+    // Antes a tela apenas DECLARAVA "sem resultado", porque o PartyPoker entrega so maos no
+    // export e nao ha arquivo para subir. Declarar era melhor que um traco sem explicacao, mas
+    // continuava sem saida: aqueles torneios nunca teriam ROI.
+    //
+    // O dono: "nao haviamos criado um meio de torneios do party poker, o usuario conseguir
+    // preencher os dados do summary que precisamos?". Agora o chip e um BOTAO que abre o
+    // formulario, e o numero digitado fica marcado como tal.
     profit === null && salaSemResultado(site) ? (
-      <span
+      <button
+        onClick={(e) => { e.stopPropagation(); if (torneio) setManual(torneio); }}
         title={t("results.semResultadoHint")}
-        className="inline-flex items-center gap-1 rounded-sm bg-secondary px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground ring-1 ring-border cursor-help"
+        data-testid="abrir-resultado-manual"
+        className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide text-amber-400 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/20"
       >
-        <Ban className="size-3" aria-hidden /> {t("results.semResultado")}
-      </span>
+        <Pencil className="size-3" aria-hidden /> {t("manual.preencher")}
+      </button>
     ) : profit === null && site === "acr" ? (
       <button
         onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
@@ -211,7 +227,12 @@ const Tournaments = () => {
         <FileUp className="size-3" aria-hidden /> {resultsUploadLabel}
       </button>
     ) : (
-      <span>{profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2)}`}</span>
+      <span className="inline-flex items-baseline gap-1">
+        <span>{profit === null ? "—" : `${positive ? "+" : ""}$${Math.abs(profit).toFixed(2)}`}</span>
+        {/* A PROCEDENCIA na cara do numero: ele sustenta o ROI e o bankroll, e quem digitou
+            precisa saber que aquele total depende do que ele mesmo preencheu. */}
+        <MarcaDeProcedencia origem={torneio?.financeiro_origem} />
+      </span>
     );
 
   useEffect(() => {
@@ -520,7 +541,7 @@ const Tournaments = () => {
                         "font-mono text-sm font-medium tabular-nums",
                         profit === null ? "text-muted-foreground" : positive ? "text-primary" : "text-destructive"
                       )}>
-                        {renderProfitOrUpload(t.site, profit, positive)}
+                        {renderProfitOrUpload(t.site, profit, positive, t)}
                       </span>
                       {podeExcluir && (
                       <button
@@ -647,7 +668,7 @@ const Tournaments = () => {
                             : "text-destructive"
                           )}
                         >
-                          {renderProfitOrUpload(t.site, profit, positive)}
+                          {renderProfitOrUpload(t.site, profit, positive, t)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -730,6 +751,22 @@ const Tournaments = () => {
           <Pager page={page} pageCount={pageCount} onPage={goPage} />
         </>
       )}
+
+      {/* O formulário do resultado, para as salas que não publicam o resumo do torneio. Ao salvar,
+          a linha da tabela é atualizada NO LUGAR: recarregar a lista inteira jogaria o jogador de
+          volta para a primeira página, e ele provavelmente vai preencher vários seguidos. */}
+      <ResultadoManual
+        torneio={manual}
+        onFechar={() => setManual(null)}
+        onSalvo={(r) => {
+          const alvo = manual?.tournament_id;
+          if (!alvo) return;
+          setData((atuais) => atuais.map((x) => x.tournament_id === alvo
+            ? { ...x, place: r.place, prize: r.prize, buy_in: r.buy_in, profit: r.profit,
+                financeiro_origem: "manual" as const }
+            : x));
+        }}
+      />
     </HudLayout>
   );
 };

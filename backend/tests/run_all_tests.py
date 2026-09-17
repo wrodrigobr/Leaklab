@@ -170,7 +170,7 @@ SUITES = {
                   # `pratica_maos`), e nao aqui: ver a suite abaixo.
                   # ── Teto do upload: o export de 15 MB do Rullian (16/09) ────────────────
                   'test_teto_do_upload.py'],
-    'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_historico_de_pratica.py', 'test_quota_mensal.py', 'test_fila_de_analise.py', 'test_burst_solver.py', 'test_janela_do_dashboard.py', 'test_hud_bate_com_pokertracker.py', 'test_coach_system.py', 'test_notifications.py',
+    'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_historico_de_pratica.py', 'test_resultado_manual.py', 'test_quota_mensal.py', 'test_fila_de_analise.py', 'test_burst_solver.py', 'test_janela_do_dashboard.py', 'test_hud_bate_com_pokertracker.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_multiway_fora_dos_agregados.py',
                   'test_coach_trial.py', 'test_coach_referral.py', 'test_coach_replay.py',

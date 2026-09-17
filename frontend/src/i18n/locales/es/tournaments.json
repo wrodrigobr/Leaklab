@@ -337,5 +337,22 @@
     "legendaCompartilhado": "Leak presente en más de un torneo"
   },
   "selecionarComparar": "Seleccionar para comparar",
-  "compareGuia": "Marca dos o más torneos en la lista y haz clic en Comparar."
+  "compareGuia": "Marca dos o más torneos en la lista y haz clic en Comparar.",
+  "manual": {
+    "titulo": "completar el resultado",
+    "colocacao": "puesto",
+    "jogadores": "jugadores",
+    "buyIn": "buy-in ($)",
+    "premio": "premio ($)",
+    "lucro": "ganancia",
+    "salvar": "guardar resultado",
+    "avisoOrigem": "esta sala no publica el resumen del torneo, entonces estos numeros quedan marcados como completados por vos. Entran en tu ROI y en tu bankroll.",
+    "erroColocacao": "Indica en que puesto terminaste, empezando en 1.",
+    "erroPremio": "Indica el premio que recibiste. Si no premiaste, usa 0.",
+    "erroBuyIn": "Indica cuanto pagaste para entrar, incluyendo las re-entradas.",
+    "erroColocacaoMaior": "El puesto no puede ser mayor que el numero de jugadores.",
+    "erroSalvar": "No pudimos guardarlo ahora. Intenta de nuevo en unos instantes.",
+    "preencher": "completar",
+    "digitado": "completado por vos"
+  }
 }

@@ -230,6 +230,13 @@ export interface Tournament {
   field_size?: number | null;   // nº de jogadores — só existe após subir o Tournament Summary
   prize_pool?: number | null;
   re_entries?: number | null;   // re-entradas do hero (buy_in já é o total investido = 1+re × entrada)
+  /**
+   * De onde vem o financeiro: `"arquivo"` (o Tournament Summary da sala) ou `"manual"` (o jogador
+   * digitou). Existe porque o PartyPoker não publica summary que saibamos ler, e sem um caminho
+   * manual aqueles torneios ficam para sempre sem ROI. A tela MOSTRA a diferença: o número
+   * digitado sustenta o ROI e o bankroll, e quem digitou precisa saber disso.
+   */
+  financeiro_origem?: "arquivo" | "manual" | null;
   llm_summary: string | null;
   coach_reviewed?: boolean;
   labels_reconciled_at?: string | null;
@@ -841,6 +848,18 @@ export const tournaments = {
     ),
 
   // Complementa a premiação com o arquivo de resultados (ACR/WPN '.ots'): prize/profit/place reais
+  /** O jogador PREENCHE o resultado, para as salas que não publicam summary (PartyPoker). O
+   *  lucro não vai no corpo: o servidor o calcula de `prize - buy_in`. */
+  resultadoManual: (tournamentId: string, dados: {
+    place: number; prize: number; buy_in: number; field_size?: number | null;
+  }) =>
+    request<{
+      tournament_id: string; place: number; prize: number; buy_in: number; profit: number;
+      field_size: number | null; financeiro_origem: "manual";
+    }>(`/tournament/${encodeURIComponent(tournamentId)}/results/manual`, {
+      method: "POST", body: JSON.stringify(dados),
+    }),
+
   uploadResults: (content: string, filename?: string) =>
     request<{ tournament_id: string; hero: string; place: number | null;
               prize: number | null; buy_in: number | null; profit: number | null;

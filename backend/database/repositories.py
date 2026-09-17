@@ -671,11 +671,16 @@ def save_tournament(user_id: int, tournament_id: str, hero: str,
 
 def update_tournament_financials(user_id: int, tournament_id: str, *, buy_in=None, prize=None,
                                  profit=None, place=None, field_size=None, prize_pool=None,
-                                 started_at=None, re_entries=None) -> bool:
+                                 started_at=None, re_entries=None, origem='arquivo') -> bool:
     """Atualiza o financeiro + dados do arquivo de RESULTADOS (Tournament Summary). prize/profit
     são SOBRESCRITOS (dado autoritativo do summary); buy_in/place/field_size/prize_pool/started_at
     mantêm o existente se vierem None (COALESCE). field_size/prize_pool só existem no summary (o HH
-    não traz o tamanho do field). Devolve False se o torneio não existe."""
+    não traz o tamanho do field). Devolve False se o torneio não existe.
+
+    `origem` grava DE ONDE veio o número: `'arquivo'` (o padrão, o summary da sala) ou `'manual'`
+    (o jogador digitou, porque o PartyPoker não publica summary que saibamos ler). A coluna existe
+    para o digitado não se passar por dado de arquivo -- o ROI e o bankroll saem daqui, e o jogador
+    precisa saber qual número depende do que ele mesmo preencheu."""
     conn = get_conn()
     try:
         exists = _fetchone(conn, _adapt(
@@ -687,10 +692,10 @@ def update_tournament_financials(user_id: int, tournament_id: str, *, buy_in=Non
             "UPDATE tournaments SET buy_in = COALESCE(?, buy_in), prize = ?, profit = ?, "
             "place = COALESCE(?, place), field_size = COALESCE(?, field_size), "
             "prize_pool = COALESCE(?, prize_pool), started_at = COALESCE(?, started_at), "
-            "re_entries = COALESCE(?, re_entries) "
+            "re_entries = COALESCE(?, re_entries), financeiro_origem = ? "
             "WHERE user_id=? AND tournament_id=?"),
             (buy_in, prize, profit, place, field_size, prize_pool, started_at, re_entries,
-             user_id, tournament_id))
+             origem, user_id, tournament_id))
         conn.commit()
         return True
     finally:

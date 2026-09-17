@@ -337,5 +337,22 @@
     "legendaCompartilhado": "Leak present in more than one tournament"
   },
   "selecionarComparar": "Select to compare",
-  "compareGuia": "Check two or more tournaments in the list and click Compare."
+  "compareGuia": "Check two or more tournaments in the list and click Compare.",
+  "manual": {
+    "titulo": "fill in the result",
+    "colocacao": "finish",
+    "jogadores": "players",
+    "buyIn": "buy-in ($)",
+    "premio": "prize ($)",
+    "lucro": "profit",
+    "salvar": "save result",
+    "avisoOrigem": "this room does not publish the tournament summary, so these numbers are marked as filled in by you. They count toward your ROI and bankroll.",
+    "erroColocacao": "Enter where you finished, starting at 1.",
+    "erroPremio": "Enter the prize you received. Use 0 if you did not cash.",
+    "erroBuyIn": "Enter how much you paid to enter, including re-entries.",
+    "erroColocacaoMaior": "The finish cannot be higher than the number of players.",
+    "erroSalvar": "We could not save it right now. Try again in a moment.",
+    "preencher": "fill in",
+    "digitado": "filled in by you"
+  }
 }
