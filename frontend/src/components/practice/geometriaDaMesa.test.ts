@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   ASPECTO_MAX,
+  ENCOSTO_DA_CARTA,
+  FOLGA,
+  layoutDaMesa,
   ASPECTO_MIN,
   arena,
   aspectoDaMesa,
@@ -127,12 +130,22 @@ describe("a geometria da mesa", () => {
     expect(vazamento({ nome: "x", x: 0, y: 0, w: 10, h: 10 }, 100, 100)).toBe(0);
   });
 
-  it("CONTROLE: a excecao do dealer vale SO para o proprio pod", () => {
+  it("CONTROLE: quem pode encostar so encosta no PROPRIO pod", () => {
+    // Duas excecoes declaradas, e as duas sao desenho: o botao do dealer e a carta do heroi nascem
+    // NO assento. Em 17/09 a carta entrou na lista, para devolver altura a mesa ("a parte superior
+    // da mesa pode encostar mais nas infos de cima" / "a parte de baixo...encostar nos botoes de
+    // acao...assim ela ganha em altura").
     expect(podemEncostar("dealer:3", "pod:3")).toBe(true);
     expect(podemEncostar("pod:3", "dealer:3")).toBe(true);
-    // e não para o pod do vizinho, nem para outros pares
+    expect(podemEncostar("cartas:3", "pod:3")).toBe(true);
+    expect(podemEncostar("pod:3", "cartas:3")).toBe(true);
+    // e NUNCA no pod do vizinho, que e o que separa desenho de defeito
     expect(podemEncostar("dealer:3", "pod:4")).toBe(false);
-    expect(podemEncostar("cartas:3", "pod:3")).toBe(false);
+    expect(podemEncostar("cartas:3", "pod:4")).toBe(false);
+    // nem entre si: os dois encostados no mesmo pod podem se alcancar, e isso e defeito -- e o que
+    // limita o encosto a 10px (a varredura acusa 2 maos em 14px e 40 em 16px, todas `cartas x
+    // dealer` no celular, onde o pod e pequeno)
+    expect(podemEncostar("cartas:3", "dealer:3")).toBe(false);
     expect(podemEncostar("aposta:3", "centro")).toBe(false);
   });
 
@@ -218,6 +231,26 @@ describe("a geometria da mesa", () => {
       expect(m.topo, `${nome}: a margem de cima e a de lado`).toBeLessThan(m.esq);
       expect(m.base, `${nome}: a margem de baixo e a de lado`).toBeLessThan(m.dir);
     }
+  });
+
+  it("a MARGEM da arena sai da mesma conta da carta que o LAYOUT", () => {
+    // O defeito que quase passou: o primeiro experimento de encosto da carta passou verde SEM
+    // mudar a mesa. A conta da distancia da carta existia em dois lugares -- o layout, que
+    // desenha, e a margem, que reserva -- e eu apliquei o encosto so no layout. Regra 5 dentro do
+    // codigo do mesmo dia.
+    //
+    // Este caso ancora na CONTA, e nao no efeito: a margem de cima tem de ser exatamente o quanto
+    // a carta que o layout desenhou sobe acima da arena, mais a folga da borda do card.
+    const w = 910;
+    const h = 385;
+    const L = layoutDaMesa({ w, h, heroi: 4, botao: 0, apostas: [] });   // assento 4 = reta de cima
+    const m = margensDaArena(w, h, L.arena.aspecto, L.arena.w, L.arena.h);
+    expect(L.cartas, "o assento 4 tem de ter carta").toBeTruthy();
+    const sobeAcimaDaArena = L.arena.y - L.cartas!.y;
+    expect(m.topo, "a margem reserva um valor que o desenho nao usa")
+      .toBeCloseTo(sobeAcimaDaArena + FOLGA, 1);
+    // e o encosto tem de valer: em zero a mesa perde a altura que o dono pediu de volta
+    expect(ENCOSTO_DA_CARTA).toBeGreaterThan(0);
   });
 
   it("o contorno e um ESTADIO: as retas ficam no eixo MAIOR", () => {

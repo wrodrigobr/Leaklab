@@ -5,6 +5,49 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## A carta do heroi ENCOSTA no assento, e a mesa recupera altura (17/09)
+
+O dono, em dois recados: "a parte superior da mesa pode encostar mais nas infos de cima" e "a parte
+de baixo da mesa, encostar nos botoes de acao...assim ela ganha em altura".
+
+Medi antes de mexer, e quem reserva aquele vao e a CARTA DO HEROI: no card de 910x385, quem seta a
+margem de cima e `cartas:4`, o assento do meio da reta superior. Nao e folga -- se o heroi cair ali,
+as cartas dele saem para cima e precisam caber. Na propria captura dele o heroi e o UTG e as cartas
+estao no vao de BAIXO, usando o espaco; o de cima fica vazio naquela mao e ocupado na seguinte.
+
+A altura que se podia devolver vem de a carta ENCOSTAR no pod, como o botao do dealer ja faz -- e e
+o que a captura do GTO Wizard mostra: a carta nasce no assento. O valor sai da medicao: a varredura
+das 81 maos fica limpa ate 10px de encosto, acusa 2 maos em 14px e 40 em 16px, todas `cartas x
+dealer` no celular, onde o pod e pequeno e os dois disputam a mesma borda. Ficou em 10, com 4px
+antes do primeiro vermelho.
+
+Resultado no card dele: arena de **738x216 (45% da area) para 756x236 (51%)**, e o vao acima e
+abaixo da mesa de 74 para 64px.
+
+### O defeito que quase passou: o experimento verde que nao mudou nada
+
+O primeiro teste do encosto passou verde e a mesa nao mudou UM PIXEL. A conta da distancia da carta
+existia em DOIS lugares -- `layoutDaMesa`, que desenha, e `margensDaArena`, que reserva -- e eu
+apliquei o encosto so no layout. A margem seguiu reservando o valor cheio, entao a arena nao cresceu.
+Regra 5 dentro do codigo que eu mesmo escrevi no mesmo dia.
+
+Agora ha `distanciaDasCartas`, uma conta so, e um guarda que ancora nela: a margem de cima tem de
+ser exatamente o quanto a carta que o layout DESENHOU sobe acima da arena, mais a folga da borda.
+Quebrando a unificacao de proposito, ele acusa.
+
+O controle da excecao do medidor tambem mudou: antes ele exigia que `cartas x pod` NUNCA se
+tocassem, e agora declara que a carta encosta no PROPRIO pod e em mais nada -- nem no pod do
+vizinho, nem no botao do dealer, que e justamente o que limita o encosto a 10px.
+
+### O que ficou de fora, e por que
+
+Zerar o vao exigiria a arena reservar espaco so para o assento onde o heroi ESTA, e nao para os
+nove. Ganharia uns 50px de altura, mas a mesa mudaria de tamanho a cada mao -- cresce com o heroi na
+lateral, encolhe com ele em cima. Com quatro mesas girando isso incomoda mais que o vao, e a decisao
+e do dono.
+
+---
+
 ## A regra responsiva chega no DESENHO, e o filtro de posicao entra na configuracao (17/09)
 
 Tres recados do dono, e um defeito que o teste do terceiro achou.

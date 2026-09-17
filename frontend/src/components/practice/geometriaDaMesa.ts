@@ -70,6 +70,25 @@ export function px(nome: Nome, w: number, h: number): number {
 export const FOLGA = 4;
 
 /**
+ * Quanto a carta do herói ENCOSTA no próprio pod, em px.
+ *
+ * ── Por que existe (17/09) ────────────────────────────────────────────────────────────────────
+ *
+ * O dono: "a parte superior da mesa pode encostar mais nas infos de cima" e "a parte de baixo da
+ * mesa, encostar nos botoes de acao...assim ela ganha em altura". Medido, o que reserva aquele
+ * espaço é a carta do herói: no card de 910x385 quem seta a margem de cima é `cartas:4`, o assento
+ * do meio da reta superior, com 70px.
+ *
+ * A reserva não é desperdício -- se o herói cair ali, as cartas dele saem para cima e precisam
+ * caber. Então o jeito de devolver a altura é a carta encostar no pod, como o botão do dealer já
+ * faz. É também o que o GTO Wizard mostra: a carta nasce no assento, não flutuando longe dele.
+ *
+ * O valor sai da medição, e não do gosto: a varredura das 81 mãos fica limpa até 8px e acusa 40
+ * mãos em 16px (a carta passa a alcançar o pod do VIZINHO, não o próprio).
+ */
+export const ENCOSTO_DA_CARTA = 10;
+
+/**
  * Quanto da arena o bloco de texto do centro ocupa.
  *
  * Era 52%, e nessa largura ele alcançava a ficha dos assentos das pontas. O texto do spot quebra
@@ -172,7 +191,7 @@ export function margensDaArena(w: number, h: number, a: number, arenaW: number, 
     considere(cx - pod / 2, cy - pod / 2, pod, pod);
 
     const dirCartas = direcaoDasCartas(i, a);
-    const dCartas = distancia(dirCartas, pod, cartasW, cartasH);
+    const dCartas = distanciaDasCartas(dirCartas, pod, cartasW, cartasH);
     considere(
       cx + dirCartas[0] * dCartas - cartasW / 2,
       cy + dirCartas[1] * dCartas - cartasH / 2,
@@ -388,6 +407,19 @@ function distancia(dir: [number, number], pod: number, w: number, h: number): nu
 }
 
 /**
+ * A distância das CARTAS do herói ao centro do pod.
+ *
+ * Existe como função porque a conta é usada em DOIS lugares -- o layout, que desenha, e a margem
+ * da arena, que reserva espaço. Eu escrevi as duas separadas hoje e o experimento do encosto
+ * passou verde sem mudar nada: eu tinha aplicado o encosto só no layout, e a margem seguia
+ * reservando o valor cheio. Regra 5 dentro do código do mesmo dia.
+ */
+export function distanciaDasCartas(dir: [number, number], pod: number,
+                                   w: number, h: number): number {
+  return Math.max(pod / 2, distancia(dir, pod, w, h) - ENCOSTO_DA_CARTA);
+}
+
+/**
  * O botão do dealer fica ENCOSTADO no pod, com metade dele sobre a borda.
  *
  * A uma folga, ele alcança o assento vizinho: no celular a arena é pequena, e o medidor achou o
@@ -466,7 +498,7 @@ export function layoutDaMesa(cfg: ConfigDoLayout) {
   if (heroi >= 0 && heroi < 9) {
     const p = pods[heroi];
     const dir = direcaoDasCartas(heroi, a.aspecto);
-    const d = distancia(dir, pod, larguraDasCartas, ch);
+    const d = distanciaDasCartas(dir, pod, larguraDasCartas, ch);
     cartas = {
       nome: `cartas:${heroi}`,
       x: p.cx + dir[0] * d - larguraDasCartas / 2,
@@ -554,6 +586,8 @@ export function caixasDaMesa(cfg: ConfigDoLayout): Caixa[] {
 export function podemEncostar(a: string, b: string): boolean {
   const par = [a.split(":")[0], b.split(":")[0]].sort().join("x");
   const mesmoAssento = a.split(":")[1] === b.split(":")[1];
+  // a carta do heroi encosta no PROPRIO pod, e so nele: alcancar o pod do vizinho e defeito
+  if (par === "cartasxpod" && mesmoAssento) return ENCOSTO_DA_CARTA > 0;
   return par === "dealerxpod" && mesmoAssento;
 }
 
