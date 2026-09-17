@@ -159,7 +159,11 @@ export function HudHeader({ onUpload }: HudHeaderProps) {
     { label: t("nav.dashboard"),   mobileLabel: t("nav.dashboard"),   to: "/dashboard",   icon: LayoutDashboard },
     { label: t("nav.tournaments"), mobileLabel: t("nav.tournaments"), to: "/tournaments", icon: Trophy },
     { label: t("nav.training"),    mobileLabel: t("nav.training"),    to: "/training",    icon: Dumbbell,
-      dot: lessonPending, activePaths: ["/training", "/leak-trainer", "/ghost", "/grind"] },
+      // `/practice` entrou em 17/09, quando o Pratica saiu da gaveta e virou card do catalogo.
+      // Sem ele na lista o menu APAGA enquanto o jogador esta praticando -- ele fica num drill de
+      // treino com o item "Treino" aparentemente inativo, o que le como "sai daqui".
+      dot: lessonPending,
+      activePaths: ["/training", "/leak-trainer", "/ghost", "/grind", "/practice"] },
     { label: t("nav.coach"),       mobileLabel: t("nav.coach"),       to: "/coach",       icon: Bot },
   ];
 

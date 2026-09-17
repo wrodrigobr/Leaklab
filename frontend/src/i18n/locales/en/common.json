@@ -34,6 +34,7 @@
     "rating": "Your rating",
     "treinos": "All drills",
     "maoCompleta": "Full hand",
+    "pratica": "Multi-table practice",
     "ranges": "Ranges",
     "meusLeaks": "Train my leaks",
     "academia": "Academy",
@@ -67,7 +68,8 @@
       "coaches": "Find a coach to review your game",
       "coach": "Chat with the AI Coach about your game",
       "maosCompartilhadas": "Hands the community shared for study",
-      "relEvolucao": "The reports AI generates on your progress, period by period"
+      "relEvolucao": "The reports AI generates on your progress, period by period",
+      "pratica": "Up to 4 preflop tables at once, filtered by stack and position."
     },
     "secoes": {
       "resultados": "Results",

@@ -31,7 +31,8 @@
 
 import {
   BookOpen, BookText, Bot, Blocks, Crosshair, Dumbbell, GitCompareArrows, Ghost,
-  Grid3x3, GraduationCap, LayoutDashboard, Medal, MessagesSquare, Spade, TrendingUp, Trophy, Users,
+  Grid3x3, GraduationCap, LayoutDashboard, LayoutGrid, Medal, MessagesSquare, Spade, TrendingUp,
+  Trophy, Users,
 } from "lucide-react";
 
 /** Chave de capacidade em `QuotaStatus.limits`. `undefined` = livre para todos. */
@@ -97,6 +98,10 @@ const SECOES_TREINAR: SecaoDeMenu[] = [
     { to: "/training", chave: "nav.treinos", desc: "nav.desc.treinos", icone: Dumbbell, cor: "teal" },
     // O acervo é COMPARTILHADO e anonimizado: livre de propósito, e é o que faz o import valer.
     { to: "/grind", chave: "nav.maoCompleta", desc: "nav.desc.maoCompleta", icone: Spade, cor: "teal" },
+    // Prática multi-mesa (17/09). Entra AQUI, ao lado do grind, e não como grupo próprio: é um
+    // drill, e o benchmark trata o mesmo caso do mesmo jeito. `LayoutGrid` são quatro quadrados,
+    // que é literalmente o que a tela faz.
+    { to: "/practice", chave: "nav.pratica", desc: "nav.desc.pratica", icone: LayoutGrid, cor: "teal" },
   ]},
   // A coluna que explica o preço: é onde mora o PRO, e o título diz o porquê.
   { chave: "nav.secoes.errosMedidos", itens: [
@@ -138,7 +143,7 @@ export const GRUPOS: GrupoDeMenu[] = [
   },
   {
     chave: "nav.grupos.treinar", icone: Dumbbell, to: "/training",
-    acende: ["/training", "/leak-trainer", "/ghost", "/grind", "/ranges"],
+    acende: ["/training", "/leak-trainer", "/ghost", "/grind", "/ranges", "/practice"],
     secoes: SECOES_TREINAR, itens: _itens(SECOES_TREINAR),
   },
   {

@@ -33,6 +33,7 @@
     "rating": "Tu rating",
     "treinos": "Todos los entrenamientos",
     "maoCompleta": "Mano completa",
+    "pratica": "Práctica multi-mesa",
     "ranges": "Ranges",
     "meusLeaks": "Entrenar mis leaks",
     "academia": "Academia",
@@ -67,7 +68,8 @@
       "coaches": "Encuentra un coach para revisar tu juego",
       "coach": "Habla con el AI Coach sobre tu juego",
       "maosCompartilhadas": "Las manos que la comunidad compartió para estudiar",
-      "relEvolucao": "Los informes que la IA genera de tu evolución, período a período"
+      "relEvolucao": "Los informes que la IA genera de tu evolución, período a período",
+      "pratica": "Hasta 4 mesas preflop a la vez, con filtro de stack y posición."
     },
     "secoes": {
       "resultados": "Resultados",

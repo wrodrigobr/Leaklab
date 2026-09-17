@@ -5,6 +5,84 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O Pratica entrou na VITRINE e no menu (17/09)
+
+O dono: "podemos ja incluir no menu tambem". Ele ficou um dia fora da vitrine por decisao dele
+("deixar esta validacao da mesa para depois...a correcao e mais critica") -- a rota `/practice`
+existia e funcionava, e sem o item ninguem a encontrava sem digitar a URL.
+
+Entrou em TRES lugares, porque a navegacao tem tres:
+
+1. `trainer_catalog.CATALOGO`: o item saiu do comentario e o Pratica virou card do catalogo de
+   treinos, ao lado do grind.
+2. `navGrupos.SECOES_TREINAR`: entrou na secao "praticar" do menu completo (o painel do desktop e a
+   folha do celular), com icone de quatro quadrados, que e literalmente o que a tela faz. Nao virou
+   grupo proprio: e um drill, e o benchmark trata o mesmo caso do mesmo jeito.
+3. As DUAS listas que acendem o item "Treino" (`HudHeader.activePaths` e o `acende` do grupo).
+   Sem `/practice` nelas o menu APAGARIA enquanto o jogador pratica, e um item de menu inativo num
+   drill de treino le como "sai daqui".
+
+### O comentario prometia tres coisas prontas, e eu conferi as tres
+
+Ele dizia "o icone, o i18n nos tres idiomas e os testes ja estao no lugar". Comentario nao e
+evidencia (regra 8): conferido, o i18n do catalogo existe em pt-BR, en e es, e a ilustracao das
+quatro mesas existe no mapa. As chaves do MENU nao existiam, e o guarda de i18n da navegacao as
+cobrou -- ele varre a fonte inteira e exige a chave nos tres locales; quebrando de proposito
+(apagando a do espanhol), ele acusa.
+
+E uma falha achada no caminho: o guarda de icones do catalogo le os ids com o regex
+`\{'id':\s*'([a-z_0-9]+)'`, que casa a linha COMENTADA. Ele vinha "cobrindo" um item desativado,
+e cobriria a ausencia de icone de um item que ninguem serve. Nao quebra nada hoje, e fica anotado.
+
+---
+
+## O AF do HUD chamava "agrediu e nunca pagou" de "sem spot" (17/09)
+
+O dono, olhando o HUD de um torneio de 17 mãos: "0 de fold pra 3bet, 0 de wtsd, e sem AF ? está
+correto?".
+
+Dos tres, dois estavam certos e um nao.
+
+### Os dois zeros sao FATO
+
+`Fold to 3-bet 0% (0/1)` e `WTSD 0% (0/2)` tem denominador maior que zero: ele enfrentou um 3-bet e
+nao foldou, viu o flop duas vezes e nao foi a showdown nenhuma. A regra da celula cinza vale para
+ausencia de OPORTUNIDADE, nunca para taxa que deu zero -- confundir as duas esconderia justamente o
+comportamento extremo.
+
+### O AF estava errado, e o defeito era um ESTADO FALTANDO
+
+Forjado o caso da captura (o heroi abre, leva call, da c-bet no flop e o vilao folda), o acumulador
+tinha `pf_aggr=1` e `pf_calls=0`, e a celula reportava `num=0, den=0, no_opportunity`: ela CONTAVA a
+agressao e depois jogava fora, afirmando que nao houve spot. Na tela isso aparecia como um traco e
+"sem spot" ao lado de um C-Bet de 100%.
+
+Zero call nao e zero oportunidade. Sao TRES estados, e o codigo tratava dois:
+
+    nenhuma acao postflop     -> nao ha o que medir      (`no_opportunity`)
+    agrediu e NUNCA pagou     -> a razao e INDEFINIDA    (`so_agressao`, novo)
+    agrediu e pagou           -> a razao existe, e numero
+
+O segundo nao pode virar numero: dividir por zero numa tela nao da "infinito", da valor inventado. A
+celula passa a mostrar a amostra (`1/0`) e a frase "so agressao, nenhum call", no lugar onde a regua
+apareceria -- porque ali nao ha regua possivel.
+
+E a mesma cicatriz da casa ("celula sem dado nunca vira 0") na direcao oposta: celula COM dado nao
+pode dizer que nao tem dado.
+
+### A regra 5, conferida e nao suposta
+
+A mesma conta de AF existe no HUD de OPONENTE (`opponent_stats.finalize`), mas com outro contrato:
+ali `af = None` significa "amostra abaixo do gate de 500", e a tela mostra a contagem em vez de
+afirmar ausencia. Varrido o front: o rotulo "sem spot" so existe no HUD do herói, entao o defeito
+nao tinha gemeo.
+
+Quatro guardas, os quatro quebrados de proposito, com controle nos dois lados (um componente que
+nunca mais dissesse "sem spot" tambem cai). As quatro suites vizinhas do HUD seguem verdes,
+incluindo a que confere contra o PokerTracker, que e a regua externa.
+
+---
+
 ## Os tres estados do assento passaram a LER, e a faixa do historico saiu (17/09)
 
 O dono: "falta deixar mais evidente quem ainda esta na mao, de quem e a vez, e quem ja foldou". E
