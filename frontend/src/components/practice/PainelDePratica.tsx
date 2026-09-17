@@ -38,9 +38,12 @@ const COR_DA_BARRA: Record<Nivel, string> = {
 };
 
 export function PainelDePratica({
-  aberto, config, pendente, stats, onConfig, onAlternar, onAplicar,
+  aberto, config, pendente, stats, tetoDeMesas, onConfig, onAlternar, onAplicar,
 }: {
   aberto: boolean;
+  /** Quantas mesas a TELA aguenta. No celular e 1, e o seletor trava acima disso: "Nao permitir
+   *  aumentar o numero de mesas em telas pequenas" (o dono, 17/09). */
+  tetoDeMesas: number;
   /** o que está VALENDO nas mesas abertas */
   config: ConfigPratica;
   /** o que o jogador escolheu e entra na próxima rodada; `null` = nada pendente */
@@ -59,6 +62,8 @@ export function PainelDePratica({
 
   if (!aberto) {
     return (
+      // Fechado, a abinha vertical existe SO no desktop: no celular ela comeria largura da mesa,
+      // e o acesso de la e o botao na barra do topo.
       <aside data-testid="pratica-painel-fechado"
              className="hidden lg:flex w-9 shrink-0 flex-col items-center gap-2 border-r border-border bg-hud-surface/40 py-3">
         <button type="button" onClick={() => onAlternar(true)}
@@ -76,8 +81,17 @@ export function PainelDePratica({
   }
 
   return (
+    /* ── Aberto: GAVETA no celular, coluna no desktop ──────────────────────────────────────
+       Ele era `hidden lg:flex`, ou seja no celular o painel simplesmente NAO EXISTIA -- e sem
+       ele nao havia como trocar stack, cenario nem unidade no telefone. O dono: "garantir que o
+       menu de configuracao apareca, hoje isto nao esta acontecendo".
+
+       No celular a gaveta se sobrepoe as mesas (`absolute`) em vez de dividir a largura com
+       elas: uma coluna de 180px num card de 390 nao deixa mesa nenhuma legivel. */
     <aside data-testid="pratica-painel"
-           className="hidden lg:flex w-[clamp(180px,14vw,224px)] shrink-0 flex-col overflow-y-auto scrollbar-hud border-r border-border bg-hud-surface/60">
+           className="absolute inset-y-0 left-0 z-30 flex w-[min(84vw,272px)] shrink-0 flex-col
+                      overflow-y-auto scrollbar-hud border-r border-border bg-hud-surface
+                      lg:static lg:z-auto lg:w-[clamp(180px,14vw,224px)] lg:bg-hud-surface/60">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="font-mono text-[9.5px] uppercase tracking-widest-2 text-primary">
           {t("painel.titulo")}
@@ -92,11 +106,23 @@ export function PainelDePratica({
       <div className="border-b border-border/50 px-3 py-2.5">
         <Rotulo>{t("painel.mesas")}</Rotulo>
         <div className="flex gap-1">
-          {Array.from({ length: MAX_MESAS }, (_, i) => i + 1).map((n) => (
-            <Seg key={n} on={atual.mesas === n} onClick={() => muda({ mesas: n })}
-                 testid={`pratica-mesas-${n}`}>{n}</Seg>
-          ))}
+          {Array.from({ length: MAX_MESAS }, (_, i) => i + 1).map((n) => {
+            const cabe = n <= tetoDeMesas;
+            return (
+              <Seg key={n} on={atual.mesas === n && cabe} onClick={() => cabe && muda({ mesas: n })}
+                   desabilitado={!cabe} titulo={cabe ? undefined : t("painel.soUmaMesa")}
+                   testid={`pratica-mesas-${n}`}>{n}</Seg>
+            );
+          })}
         </div>
+        {tetoDeMesas < MAX_MESAS && (
+          // A frase explica o que o botao cinza nao explica. Sem ela, o jogador acha que o
+          // seletor esta quebrado -- e no celular ele nao tem como descobrir o motivo.
+          <p data-testid="pratica-so-uma-mesa"
+             className="mt-1.5 font-mono text-[9px] leading-relaxed text-muted-foreground/80">
+            {t("painel.soUmaMesa")}
+          </p>
+        )}
         {pendente && (
           <div data-testid="pratica-pendente" className="mt-2">
             {/* ── O botao APLICAR (pedido do dono, 16/09) ────────────────────────────────────
@@ -239,16 +265,24 @@ function Rotulo({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Seg({ on, onClick, children, testid, esquerda = false }: {
+function Seg({ on, onClick, children, testid, esquerda = false, desabilitado = false, titulo }: {
   on: boolean; onClick: () => void; children: React.ReactNode;
   testid?: string; esquerda?: boolean;
+  /** A opção existe mas não cabe nesta tela: fica visível e inerte, com o motivo no `title`.
+   *  Some-la seria pior -- o jogador no desktop conhece as quatro, e no celular ver a opção
+   *  apagada com a frase ao lado explica; ver o seletor encurtar não explica nada. */
+  desabilitado?: boolean;
+  titulo?: string;
 }) {
   return (
     <button type="button" onClick={onClick} data-testid={testid} aria-pressed={on}
+            disabled={desabilitado} title={titulo}
             className={cn("flex-1 rounded border py-1 font-mono text-[10.5px] transition-colors",
               esquerda ? "px-2 text-left" : "text-center",
-              on ? "border-primary bg-primary font-bold text-background"
-                 : "border-border text-muted-foreground hover:text-foreground")}>
+              desabilitado
+                ? "cursor-not-allowed border-border/40 text-muted-foreground/35"
+                : on ? "border-primary bg-primary font-bold text-background"
+                     : "border-border text-muted-foreground hover:text-foreground")}>
       {children}
     </button>
   );

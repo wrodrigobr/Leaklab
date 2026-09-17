@@ -5,6 +5,60 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O Pratica no celular: uma mesa, o painel de volta, e o limite declarado (17/09)
+
+O dono abriu no telefone e mandou a captura: quatro mesas minusculas em 2x2, os botoes da barra
+sobrepostos ("VOLTAR AO TREINO" por cima de "MAOS PRATICADAS"), as cartas do heroi FORA do card, e
+nenhum acesso ao painel de configuracao. O pedido: "No celular vamos ficar apenas 1 mesa, e
+garantir que o menu de configuracao apareca, hoje isto nao esta acontecendo. Nao permitir aumentar
+o numero de mesas em telas pequenas".
+
+**Uma mesa, por LARGURA e nao por aparelho.** Nenhum teste de user-agent: o que decide e o espaco,
+e o espaco muda com o celular girando e com a janela do desktop pela metade. O corte e 1024px, o
+mesmo `lg` que o painel usa para virar coluna. A escolha dele e APARADA e nao reescrita: quem
+configurou quatro mesas no desktop nao perde a preferencia, ela volta a valer quando a tela
+crescer. E o teto entra no unico ponto em que as mesas sao pedidas, entao a URL com `?mesas=4`
+passa por ele tambem.
+
+**O painel existia como `hidden lg:flex`**, ou seja no celular ele nao existia -- e sem ele nao
+havia como trocar stack, cenario nem unidade no telefone. Agora e gaveta sobre as mesas no celular
+e coluna no desktop, com o acesso num botao na barra, e comeca FECHADO no celular (aberto, cobriria
+a mesa inteira).
+
+**O seletor de mesas trava acima do teto**, com os botoes visiveis e inertes e uma frase ao lado
+("nesta tela cabe 1 mesa por vez"). Esconder as opcoes seria pior: um seletor que encurta nao
+explica nada, e o jogador acha que esta quebrado.
+
+**As cartas fora do card tinham causa medivel.** O medidor de colisao nao pegava porque nenhum
+tamanho dele tinha proporcao de celular: o card mais estreito era 683x330, largo e baixo, e no
+telefone ele e estreito e ALTO. Com os tamanhos de celular no medidor, ele acusou de imediato --
+81 maos com problema.
+
+Dois consertos sairam dali:
+
+1. **A ficha de aposta passou a sair do POD, em px**, e nao numa fracao do raio. A fracao amarra a
+   distancia ao tamanho da mesa, e foi assim que ela passou por dois defeitos opostos: com 0,62 as
+   fichas ficavam orfas no meio do feltro, e quando eu as aproximei a janela livre virou um
+   intervalo estreito que precisava ser remedido a cada mudanca de geometria. No celular a mesma
+   amarra colocou a ficha POR CIMA do pod (52px2, medido em 320px). Agora ela usa a mesma conta do
+   botao do dealer, no sentido oposto: distancia igual em toda mesa, e nenhuma janela para remedir.
+
+2. **O limite de 360px de largura ficou DECLARADO.** Abaixo dele as cartas do heroi encostam no pod
+   do assento vizinho, porque com a arena pequena os vizinhos ficam a ~85px. Encolher as cartas
+   resolveria (medido: 20x26 faz 320px caber) e foi recusado de proposito: o piso das medidas age
+   no celular COMUM tambem, entao atender um aparelho de 2016 encolheria a carta de 26 para 20px em
+   todo telefone, e as cartas sao a informacao que decide a mao. 360 cobre Galaxy S8 em diante e
+   iPhone SE 2020; fica fora o iPhone SE de 2016, e nele a sobreposicao e visual, nao quebra. O
+   caso de teste trava a fronteira nos dois lados: 360 tem de caber, e 320 tem de acusar.
+
+**E um guarda meu que passou verde quando devia falhar.** Ao quebrar de proposito o painel de volta
+para `hidden lg:flex`, o teste continuou verde: o jsdom nao aplica media query, entao a classe
+esconde no navegador mas o elemento continua no DOM e `findByTestId` o acha. O caso passou a
+ancorar na CONDICAO (a classe) e nao no efeito (estar no documento) -- a mesma licao que a casa
+tem escrita, e que eu repeti.
+
+---
+
 ## O historico das maos praticadas, e a regua que mudou de lado (16/09)
 
 O dono: "seria interessante armazenar este treino, para ficar no historico das ultimas maos

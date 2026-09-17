@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  CONFIG_PADRAO, MAX_MESAS, acaoDaTecla, acumula, devePausar, mudaOSorteio,
+  CONFIG_PADRAO, MAX_MESAS, acaoDaTecla, acumula, configNaTela, devePausar, mudaOSorteio,
+  tetoDeMesas,
   nivelDoGrade, normalizaAcao, proximoFoco, NIVEIS, SIMBOLO_DO_NIVEL, STATS_ZERO,
   type ConfigPratica,
 } from "./pratica";
@@ -177,4 +178,36 @@ describe("pausar depois de", () => {
     expect(Object.values(s.porNivel).reduce((a, b) => a + b, 0)).toBe(0);
   });
 
+});
+
+describe("quantas mesas caberm na tela", () => {
+  it("abaixo de 1024px, UMA mesa", () => {
+    // O pedido do dono depois de abrir no celular: "No celular vamos ficar apenas 1 mesa".
+    expect(tetoDeMesas(390)).toBe(1);     // iPhone em retrato
+    expect(tetoDeMesas(844)).toBe(1);     // o mesmo iPhone em paisagem
+    expect(tetoDeMesas(1023)).toBe(1);    // a janela do desktop pela metade
+    expect(tetoDeMesas(1024)).toBe(MAX_MESAS);
+    expect(tetoDeMesas(1920)).toBe(MAX_MESAS);
+  });
+
+  it("a escolha dele e APARADA, e nao reescrita", () => {
+    // Quem configurou quatro mesas no desktop e abre no celular nao perde a preferencia: ela
+    // volta a valer quando a tela crescer.
+    const quatro = { ...CONFIG_PADRAO, mesas: 4 };
+    expect(configNaTela(quatro, 390).mesas).toBe(1);
+    expect(configNaTela(quatro, 1440).mesas).toBe(4);
+    // e o resto da configuracao passa intacto
+    const cheia = { ...CONFIG_PADRAO, mesas: 4, cenario: "rfi", unidade: "fichas" as const };
+    const apar = configNaTela(cheia, 390);
+    expect(apar.cenario).toBe("rfi");
+    expect(apar.unidade).toBe("fichas");
+  });
+
+  it("quem ja escolheu 1 mesa nao e tocado", () => {
+    // Sem isto, `configNaTela` devolveria um objeto NOVO a cada render e o efeito que monta as
+    // mesas dispararia em loop.
+    const uma = { ...CONFIG_PADRAO, mesas: 1 };
+    expect(configNaTela(uma, 390)).toBe(uma);
+    expect(configNaTela(uma, 1440)).toBe(uma);
+  });
 });

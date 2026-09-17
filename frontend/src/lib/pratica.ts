@@ -31,6 +31,42 @@ export interface ConfigPratica {
   unidade: Unidade;
 }
 
+/**
+ * Quantas mesas a tela AGUENTA, pela largura dela em px.
+ *
+ * ── O pedido (17/09) ──────────────────────────────────────────────────────────────────────────
+ *
+ * O dono, depois de abrir o Pratica no celular: "No celular vamos ficar apenas 1 mesa, e garantir
+ * que o menu de configuracao apareca, hoje isto nao esta acontecendo. Nao permitir aumentar o
+ * numero de mesas em telas pequenas".
+ *
+ * ── Por que a regra e por LARGURA, e nao por "e celular?" ─────────────────────────────────────
+ *
+ * Nenhum teste de user-agent: o que decide e o espaco, e o espaco muda com o celular girando, com
+ * a janela do desktop pela metade e com o tablet em qualquer orientacao. Detectar aparelho erra
+ * nos tres casos, e erra calado.
+ *
+ * O corte e 1024px porque e o MESMO `lg` do Tailwind que o painel de configuracao usa para virar
+ * coluna: abaixo dele o painel e uma gaveta sobre as mesas, e duas mesas mais uma gaveta nao
+ * cabem. Um degrau intermediario (duas mesas no tablet) fica para quando alguem pedir -- inventar
+ * agora seria mais uma faixa para testar sem ninguem tendo reclamado dela.
+ */
+export const LARGURA_PARA_VARIAS_MESAS = 1024;
+
+export function tetoDeMesas(larguraDaTela: number): number {
+  return larguraDaTela >= LARGURA_PARA_VARIAS_MESAS ? MAX_MESAS : 1;
+}
+
+/** A configuracao que VALE nesta tela: o que ele escolheu, aparado pelo que cabe.
+ *
+ *  Aparar em vez de reescrever a escolha dele e deliberado: quem configurou quatro mesas no
+ *  desktop e abriu no celular nao perde a preferencia -- ela volta a valer quando a tela crescer.
+ */
+export function configNaTela(c: ConfigPratica, larguraDaTela: number): ConfigPratica {
+  const teto = tetoDeMesas(larguraDaTela);
+  return c.mesas <= teto ? c : { ...c, mesas: teto };
+}
+
 export const CONFIG_PADRAO: ConfigPratica = {
   mesas: 4,
   // O MTT curto é o ponto do treino, e é a faixa que a Academia não cobre de propósito.

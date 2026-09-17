@@ -26,7 +26,8 @@
     "bbPerdidos": "bb perdidos",
     "aplicaDepois": "ou aguarde: entra sozinho na próxima mão de cada mesa",
     "unidade": "unidade",
-    "aplicarAgora": "aplicar agora"
+    "aplicarAgora": "aplicar agora",
+    "soUmaMesa": "nesta tela cabe 1 mesa por vez. Abra num monitor para treinar 4 ao mesmo tempo."
   },
   "cenario": {
     "mixed": "tudo",

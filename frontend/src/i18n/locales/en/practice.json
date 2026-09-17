@@ -26,7 +26,8 @@
     "bbPerdidos": "bb lost",
     "aplicaDepois": "or wait: it applies on each table next hand",
     "unidade": "unit",
-    "aplicarAgora": "apply now"
+    "aplicarAgora": "apply now",
+    "soUmaMesa": "this screen fits 1 table at a time. Open it on a monitor to train 4 at once."
   },
   "cenario": {
     "mixed": "everything",

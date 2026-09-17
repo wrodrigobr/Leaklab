@@ -401,4 +401,94 @@ describe("modo Pratica", () => {
                   { timeout: 5000 });
     expect(within(mesa).queryByTestId("pratica-veredito")).toBeNull();
   });
+
+  /**
+   * ── Tela pequena (17/09) ──────────────────────────────────────────────────────────────────
+   *
+   * O dono abriu o Pratica no celular: quatro mesas minusculas em 2x2, os botoes da barra
+   * sobrepostos, e nenhum acesso ao painel de configuracao (ele era `hidden lg:flex`). O pedido:
+   * "No celular vamos ficar apenas 1 mesa, e garantir que o menu de configuracao apareca, hoje
+   * isto nao esta acontecendo. Nao permitir aumentar o numero de mesas em telas pequenas".
+   *
+   * O jsdom tem `window.innerWidth` de 1024 por padrao, que e exatamente o corte -- os casos
+   * abaixo trocam a largura ANTES de montar, porque o teto e lido na montagem.
+   */
+  function comLargura(px: number) {
+    Object.defineProperty(window, "innerWidth", { value: px, configurable: true, writable: true });
+  }
+
+  it("no celular pede UMA mesa, mesmo com 4 na URL", async () => {
+    comLargura(390);
+    try {
+      render(<MemoryRouter initialEntries={["/practice?mesas=4"]}><Practice /></MemoryRouter>);
+      await waitFor(() => expect(tables).toHaveBeenCalled(), { timeout: 5000 });
+      // o primeiro argumento de `practice.tables` e quantas mesas
+      expect(tables.mock.calls[0][0], "quatro mesas num celular").toBe(1);
+    } finally {
+      comLargura(1024);
+    }
+  });
+
+  it("no desktop a URL com 4 mesas continua valendo", async () => {
+    // CONTROLE do caso acima: sem ele, um teto cravado em 1 passaria verde nos dois.
+    comLargura(1440);
+    try {
+      render(<MemoryRouter initialEntries={["/practice?mesas=4"]}><Practice /></MemoryRouter>);
+      await waitFor(() => expect(tables).toHaveBeenCalled(), { timeout: 5000 });
+      expect(tables.mock.calls[0][0]).toBe(4);
+    } finally {
+      comLargura(1024);
+    }
+  });
+
+  it("no celular o painel tem acesso pela barra, e comeca fechado", async () => {
+    comLargura(390);
+    try {
+      monta();
+      await screen.findByTestId("pratica-mesa-m1");
+      // fechado: a gaveta nao esta na tela cobrindo a mesa
+      expect(screen.queryByTestId("pratica-painel")).toBeNull();
+      // e existe um acesso -- sem ele, no celular nao havia como trocar stack nem cenario
+      const botao = screen.getByTestId("pratica-abrir-painel-mobile");
+      fireEvent.click(botao);
+      const gaveta = await screen.findByTestId("pratica-painel");
+
+      // A CLASSE, e nao a presenca no DOM: o jsdom nao aplica media query, entao `hidden lg:flex`
+      // continua no documento e `findByTestId` o acha mesmo invisivel no celular. Verificado
+      // quebrando -- com o `hidden` de volta, a versao anterior deste caso passou VERDE.
+      expect(gaveta.className, "com `hidden` o painel nao existe no celular")
+        .not.toMatch(/(^|\s)hidden(\s|$)/);
+      // e ele e gaveta no celular, coluna no desktop
+      expect(gaveta.className).toContain("absolute");
+      expect(gaveta.className).toContain("lg:static");
+    } finally {
+      comLargura(1024);
+    }
+  });
+
+  it("no celular o seletor de mesas TRAVA acima de uma, e diz por que", async () => {
+    comLargura(390);
+    try {
+      monta();
+      await screen.findByTestId("pratica-mesa-m1");
+      fireEvent.click(screen.getByTestId("pratica-abrir-painel-mobile"));
+      await screen.findByTestId("pratica-painel");
+
+      // `hasAttribute` e nao `toBeDisabled`: o projeto nao usa jest-dom, e a matcher inexistente
+      // faz o caso falhar por motivo errado.
+      expect((screen.getByTestId("pratica-mesas-1") as HTMLButtonElement).disabled).toBe(false);
+      for (const n of [2, 3, 4]) {
+        expect((screen.getByTestId(`pratica-mesas-${n}`) as HTMLButtonElement).disabled,
+               `${n} mesas`).toBe(true);
+      }
+      // e a frase explica: um botao cinza sozinho parece defeito
+      expect(screen.getByTestId("pratica-so-uma-mesa")).toBeTruthy();
+
+      // clicar no que esta travado nao muda nada
+      fireEvent.click(screen.getByTestId("pratica-mesas-4"));
+      expect(screen.queryByTestId("pratica-pendente")).toBeNull();
+    } finally {
+      comLargura(1024);
+    }
+  });
 });

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, History as HistoryIcon, Loader2, X } from "lucide-react";
+import { ArrowLeft, History as HistoryIcon, Loader2, SlidersHorizontal, X } from "lucide-react";
 import { metrics, practice, type EvLeak, type PracticeGrade, type PracticeTable } from "@/lib/api";
 import { MesaDePratica } from "@/components/practice/MesaDePratica";
 import { PainelDePratica } from "@/components/practice/PainelDePratica";
 import { RelatorioDePratica } from "@/components/practice/RelatorioDePratica";
 import {
-  acaoDaTecla, acumula, CONFIG_PADRAO, devePausar, MAX_MESAS, mudaOSorteio, nivelDoGrade,
-  proximoFoco, STATS_ZERO, type ConfigPratica, type Pausa, type StatsPratica, type Unidade,
+  acaoDaTecla, acumula, CONFIG_PADRAO, configNaTela, devePausar, MAX_MESAS, mudaOSorteio,
+  nivelDoGrade, proximoFoco, STATS_ZERO, tetoDeMesas, type ConfigPratica, type Pausa,
+  type StatsPratica, type Unidade,
 } from "@/lib/pratica";
 import { chaveDoLeak } from "@/lib/playlistDoLeak";
 import { cn } from "@/lib/utils";
@@ -67,8 +68,35 @@ export default function Practice() {
   /** o que o jogador escolheu e ainda não entrou */
   const [pendente, setPendente] = useState<ConfigPratica | null>(null);
   const [relatorio, setRelatorio] = useState(false);
-  const [painel, setPainel] = useState(
-    () => localStorage.getItem("pratica_painel") !== "false");
+
+  /**
+   * A largura da JANELA, observada.
+   *
+   * Nenhum teste de user-agent: o que decide quantas mesas cabem e o espaco, e o espaco muda com
+   * o celular girando e com a janela do desktop pela metade. `resize` cobre os dois; detectar
+   * aparelho erraria nos dois, e erraria calado.
+   */
+  const [largura, setLargura] = useState(
+    () => (typeof window === "undefined" ? 1440 : window.innerWidth));
+  useEffect(() => {
+    const aoRedimensionar = () => setLargura(window.innerWidth);
+    window.addEventListener("resize", aoRedimensionar);
+    // orientationchange porque em alguns navegadores de celular o `resize` chega antes de a
+    // largura nova valer, e a leitura sai com o valor velho
+    window.addEventListener("orientationchange", aoRedimensionar);
+    return () => {
+      window.removeEventListener("resize", aoRedimensionar);
+      window.removeEventListener("orientationchange", aoRedimensionar);
+    };
+  }, []);
+  const teto = tetoDeMesas(largura);
+  const [painel, setPainel] = useState(() => {
+    // No celular o painel comeca FECHADO, e a preferencia guardada nao vale ali: aberto, a gaveta
+    // cobre a mesa inteira, e o jogador cairia no treino sem ver o que esta treinando. No desktop
+    // ele e uma coluna ao lado, e a preferencia manda.
+    if (typeof window !== "undefined" && tetoDeMesas(window.innerWidth) < MAX_MESAS) return false;
+    return localStorage.getItem("pratica_painel") !== "false";
+  });
 
   const [mesas, setMesas] = useState<PracticeTable[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -119,7 +147,12 @@ export default function Practice() {
     setCarregando(true);
     setErro(false);
     try {
-      const r = await practice.tables(c.mesas, {
+      // O teto da TELA entra aqui, no unico ponto em que as mesas sao pedidas: qualquer caminho
+      // (a URL com `?mesas=4`, o painel, o botao aplicar) passa por este lugar. A leitura e
+      // direta da janela, e nao do estado, porque isto tambem roda dentro de temporizadores --
+      // e o estado que a closure capturou pode ser de antes de o celular girar.
+      const naTela = configNaTela(c, typeof window === "undefined" ? 1440 : window.innerWidth);
+      const r = await practice.tables(naTela.mesas, {
         cenario: c.cenario, stacks: c.stacks, evitar: vistos.current.slice(-400),
       });
       const vindas = r.tables ?? [];
@@ -308,11 +341,23 @@ export default function Practice() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background hud-scanline">
       {/* barra */}
-      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-hud-surface px-3 py-2">
-        <div className="flex min-w-0 items-center gap-3">
-          <button onClick={() => navigate("/training")}
-                  className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary">
-            <ArrowLeft className="size-3.5" /> {t("voltar")}
+      {/* ── A barra ──────────────────────────────────────────────────────────────────────────
+          No celular ela estava ILEGIVEL: "voltar ao treino", "maos praticadas" e "encerrar e ver
+          boletim" somados passam de 390px, e os tres textos se sobrepunham (o dono fotografou).
+          Agora o texto de cada botao aparece a partir de `sm`, e no celular ficam os icones -- o
+          proprio rotulo vai no `title`/`aria-label`, que e o que um icone sozinho precisa. */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-hud-surface px-2 py-2 sm:gap-4 sm:px-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <button onClick={() => navigate("/training")} title={t("voltar")} aria-label={t("voltar")}
+                  className="inline-flex shrink-0 items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary">
+            <ArrowLeft className="size-3.5" />
+            <span className="hidden sm:inline">{t("voltar")}</span>
+          </button>
+          {/* a configuracao: no celular o painel e uma gaveta, e este e o unico acesso a ela */}
+          <button onClick={() => alternarPainel(!painel)} data-testid="pratica-abrir-painel-mobile"
+                  title={t("painel.abrir")} aria-label={t("painel.abrir")}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary lg:hidden">
+            <SlidersHorizontal className="size-3" />
           </button>
           <span className="truncate font-mono text-[10.5px] tracking-widest text-muted-foreground">
             {t("sessao", { maos: stats.maos, min: minutos })}
@@ -322,13 +367,17 @@ export default function Practice() {
         {/* O relatorio abre SOBRE a tela do treino, e nao em outra rota: o jogador consulta e
             volta para as mesas que ainda estao abertas. Trocar de rota perderia a sessao. */}
         <button onClick={() => setRelatorio(true)} data-testid="pratica-abrir-relatorio"
+                title={t("relatorio.titulo")} aria-label={t("relatorio.titulo")}
                 className="inline-flex items-center gap-1.5 rounded border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-primary">
-          <HistoryIcon className="size-3" /> {t("relatorio.titulo")}
+          <HistoryIcon className="size-3" />
+          <span className="hidden sm:inline">{t("relatorio.titulo")}</span>
         </button>
         <button onClick={() => navigate("/training")}
                 data-testid="pratica-encerrar"
-                className="shrink-0 rounded border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground">
-          {t("encerrar")}
+                title={t("encerrar")} aria-label={t("encerrar")}
+                className="shrink-0 rounded border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground transition-colors hover:text-foreground sm:px-2.5">
+          <X className="size-3 sm:hidden" />
+          <span className="hidden sm:inline">{t("encerrar")}</span>
         </button>
         </div>
       </div>
@@ -336,6 +385,7 @@ export default function Practice() {
       <div className="relative flex min-h-0 flex-1">
         <RelatorioDePratica aberto={relatorio} onFechar={() => setRelatorio(false)} />
         <PainelDePratica aberto={painel} config={config} pendente={pendente} stats={stats}
+                         tetoDeMesas={teto}
                          onConfig={aoConfigurar} onAlternar={alternarPainel}
                          onAplicar={aplicarAgora} />
 

@@ -96,24 +96,21 @@ export const FOLGA = 4;
 export const LARGURA_DO_CENTRO = 0.46;
 
 /**
- * A que fração do raio fica a ficha de aposta de cada assento.
+ * ── A ficha de aposta sai do POD, em px, e nao numa fracao do raio ────────────────────────────
  *
- * ── Por que 0,76, e não um número escolhido a olho ───────────────────────────────────────────
+ * A primeira versao punha a ficha em `naElipse(angulo, 0,73)`, uma fracao do raio. Isso amarra a
+ * distancia ao TAMANHO da mesa, e foi assim que ela passou por dois defeitos opostos: com 0,62 as
+ * fichas ficavam ORFAS no meio do feltro (o dono viu o `0.5` a uns 150px do pod do SB) e, quando
+ * eu as aproximei, a janela livre virou um intervalo estreito que precisou ser remedido a cada
+ * mudanca de geometria.
  *
- * Com 0,62 (a primeira tentativa de fugir do texto central) as fichas ficavam ÓRFÃS no meio do
- * feltro: na captura do dono, o `0.5` estava a uns 150px do pod do SB, e nada dizia de quem era a
- * aposta. A janela livre foi MEDIDA com o medidor de colisão, com aposta larga nos nove lugares e
- * nos quatro tamanhos de card:
+ * No celular a mesma amarra quebrou de vez: com a arena pequena, 0,73 do raio deixa a ficha
+ * ENCOSTADA no pod (52px2 de sobreposicao, medido em 320px de largura).
  *
- *   >= 0,75       a ficha encosta no POD do próprio jogador
- *   0,56 a 0,74   livre
- *   <= 0,50       a ficha entra no bloco de texto do centro
- *
- * 0,73 é o mais perto do dono da aposta que cabe, com uma casa de folga na borda da janela. A
- * janela foi remedida quando a elipse passou a preencher a arena: com o desenho anterior o teto
- * era 0,77, e um número herdado de outra geometria é como se volta a ter ficha por cima de pod.
+ * Agora ela sai do pod pela direcao do centro, a uma distancia em px que vem dos tamanhos do pod
+ * e da propria ficha -- a mesma conta do botao do dealer, no sentido oposto. A distancia fica
+ * igual em toda mesa, e nao ha janela para remedir.
  */
-export const ESCALA_DAS_FICHAS = 0.73;
 
 /**
  * ── A elipse não tem raio escolhido a olho: ela PREENCHE a arena ──────────────────────────────
@@ -178,8 +175,11 @@ export function naElipse(grau: number, escala = 1): [number, number] {
 /** Os nove lugares, SOBRE a elipse. */
 export const LUGARES: [number, number][] = ANGULOS.map((a) => naElipse(a));
 
-/** A ficha de cada assento: mesma direção do dono dela, mais perto do centro. */
-export const FICHAS: [number, number][] = ANGULOS.map((a) => naElipse(a, ESCALA_DAS_FICHAS));
+/** A direção em que a ficha de aposta sai do pod: para DENTRO, oposta ao botão do dealer. */
+export function direcaoDaFicha(i: number): [number, number] {
+  const [c, s] = versor(i);
+  return [-c, -s];
+}
 
 function versor(i: number): [number, number] {
   const r = (ANGULOS[i] * Math.PI) / 180;
@@ -277,6 +277,10 @@ export function distanciaDoDealer(i: number, pod: number, dealer: number): numbe
   return distancia(direcaoDoDealer(i), pod, dealer, dealer);
 }
 
+export function distanciaDaFicha(i: number, pod: number, w: number, h: number): number {
+  return distancia(direcaoDaFicha(i), pod, w, h);
+}
+
 /**
  * O deslocamento de um elemento como CSS, a partir do centro do pod.
  *
@@ -303,6 +307,14 @@ export function deslocamentoDasCartasCss(i: number): { x: string; y: string } {
 
 export function deslocamentoDoDealerCss(i: number): { x: string; y: string } {
   return deslocamentoCss(direcaoDoDealer(i), M.dealer, M.dealer);
+}
+
+/** A largura da ficha com o valor ao lado: a bolinha, o gap e o texto. O texto e medido em `ch`,
+ *  que na fonte mono e a largura de um caractere -- quatro caracteres cobrem "19.5". */
+export const LARGURA_DA_FICHA = `calc(${M.ficha} + 4px + 4ch)`;
+
+export function deslocamentoDaFichaCss(i: number): { x: string; y: string } {
+  return deslocamentoCss(direcaoDaFicha(i), LARGURA_DA_FICHA, M.fFicha);
 }
 
 export type Caixa = {
@@ -388,13 +400,15 @@ export function caixasDaMesa(cfg: ConfigDeMedida): Caixa[] {
   });
 
   apostas.forEach(({ i, texto }) => {
-    const [cx, cy] = ponto(FICHAS[i]);
+    const [px0, py0] = ponto(LUGARES[i]);
     const largura = fichaD + 4 + larguraDeTexto(texto, fFicha);
     const altura = Math.max(fichaD, fFicha * 1.2);
+    const dir = direcaoDaFicha(i);
+    const d = distanciaDaFicha(i, pod, largura, altura);
     caixas.push({
       nome: `aposta:${i}`,
-      x: cx - largura / 2,
-      y: cy - altura / 2,
+      x: px0 + dir[0] * d - largura / 2,
+      y: py0 + dir[1] * d - altura / 2,
       w: largura,
       h: altura,
     });

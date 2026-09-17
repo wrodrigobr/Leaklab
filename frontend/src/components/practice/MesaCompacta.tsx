@@ -2,13 +2,13 @@ import type { DrillTableState } from "@/lib/api";
 import type { Unidade } from "@/lib/pratica";
 import { cn } from "@/lib/utils";
 import {
-  FICHAS,
-  alturaDoHistoricoCss,
-  arenaCss,
   FOLGA,
   LARGURA_DO_CENTRO,
   LUGARES,
   M,
+  alturaDoHistoricoCss,
+  arenaCss,
+  deslocamentoDaFichaCss,
   deslocamentoDasCartasCss,
   deslocamentoDoDealerCss,
 } from "./geometriaDaMesa";
@@ -235,11 +235,17 @@ export function MesaCompacta({ table, hero, unidade, spot, veredito }: {
           e a MESMA elipse dos assentos com raio menor. Assim ela fica na direcao de quem apostou
           e claramente dentro do trilho, e mover o trilho move as duas coisas juntas. */}
       {seats.filter((s) => s.bet > 0).map((s) => {
-        const [fx, fy] = FICHAS[(s.seat - 1) % 9];
+        const i = (s.seat - 1) % 9;
+        const [x, y] = LUGARES[i];
+        const d = deslocamentoDaFichaCss(i);
         return (
           <span key={`ficha-${s.seat}`} data-testid={`aposta-${s.pos || s.seat}`}
-                className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 whitespace-nowrap"
-                style={{ left: `${fx}%`, top: `${fy}%` }}>
+                className="absolute flex items-center gap-1 whitespace-nowrap"
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  transform: `translate(calc(-50% + ${d.x}), calc(-50% + ${d.y}))`,
+                }}>
             <i className="rounded-full bg-[#4A9BE8]"
                style={{ width: M.ficha, height: M.ficha }} />
             <span className="font-mono font-bold tabular-nums text-foreground"

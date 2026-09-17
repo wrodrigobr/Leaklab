@@ -3,14 +3,13 @@ import {
   ANGULOS,
   arena,
   arenaCss,
-  ESCALA_DAS_FICHAS,
   FOLGA,
-  FICHAS,
   LUGARES,
   PARAMS,
   caixasDaMesa,
   deslocamentoDasCartasCss,
   deslocamentoDoDealerCss,
+  direcaoDaFicha,
   direcaoDasCartas,
   direcaoDoDealer,
   distanciaDasCartas,
@@ -39,6 +38,15 @@ const CARDS = [
   { nome: "2 mesas (lado a lado)", w: 830, h: 880 },
   { nome: "4 mesas em 1366x768", w: 683, h: 330 },
   { nome: "1 mesa", w: 1660, h: 880 },
+  // ── Celular (17/09) ──────────────────────────────────────────────────────────────────────
+  // O dono abriu no telefone e as cartas do heroi apareceram FORA do card, uma delas por cima do
+  // historico. A varredura nao pegava porque nenhum tamanho aqui tinha proporcao de celular: o
+  // card mais estreito era 683x330, que e largo e baixo, e no telefone ele e estreito e ALTO.
+  // Uma mesa ocupando a tela do iPhone menos a barra e os botoes de acao:
+  { nome: "celular retrato (iPhone 12/13)", w: 390, h: 560 },
+  { nome: "celular retrato grande", w: 430, h: 620 },
+  { nome: "celular estreito (360, o minimo)", w: 360, h: 522 },
+  { nome: "celular paisagem", w: 844, h: 300 },
 ];
 
 /** Uma mão com aposta em vários assentos, incluindo valores largos (o texto da ficha é o que
@@ -96,6 +104,32 @@ describe("a geometria da mesa", () => {
     expect(falhas.slice(0, 40).join("\n"), `${falhas.length} maos com problema`).toBe("");
   });
 
+  it("360px de largura e o MINIMO, e a fronteira esta medida", () => {
+    // Abaixo de 360 as cartas do heroi encostam no pod do assento VIZINHO: com a arena pequena os
+    // vizinhos ficam a ~85px, e as duas cartas mais a folga passam disso.
+    //
+    // Encolher as cartas resolveria (medido: 20x26 faz 320px caber), e a opcao foi recusada de
+    // proposito. O piso das medidas age no celular COMUM tambem -- em 390x565 a fracao da largura
+    // ja cai abaixo do piso --, entao baixar o piso para atender um aparelho de 2016 encolheria a
+    // carta de 26 para 20px em todo telefone. As cartas sao a informacao que decide a mao.
+    //
+    // 360 cobre Galaxy S8 em diante e iPhone SE 2020; fica fora o iPhone SE de 2016 e o iPhone 5,
+    // e neles a sobreposicao e visual, nao quebra. Este caso existe para que o limite seja
+    // DECLARADO: quem mexer na geometria ve onde ela para de caber.
+    const problemas = (w: number, h: number) => {
+      let n = 0;
+      for (let heroi = 0; heroi < 9; heroi++) {
+        const caixas = caixasDaMesa({ w, h, heroi, botao: 0, apostas: APOSTAS });
+        n += conflitos(caixas, w, h).length;
+      }
+      return n;
+    };
+    expect(problemas(360, 522), "360px tem de caber").toBe(0);
+    // CONTROLE: a fronteira existe, e a medicao a ACHA. Sem isto, o caso acima poderia passar
+    // verde porque a varredura nao mede nada.
+    expect(problemas(320, 464), "em 320px a colisao e conhecida").toBeGreaterThan(0);
+  });
+
   it("CONTROLE: o medidor ACUSA o botao do dealer no canto do pod, que era o layout antigo", () => {
     // Regra 1 da casa: o medidor precisa provar que detecta. O "D" era `-bottom-0.5 -left-1`
     // sobre o pod, e na captura do dono ele cobre a borda do assento do BTN. Se a varredura
@@ -144,21 +178,15 @@ describe("a geometria da mesa", () => {
     expect(sobreposicao(a, { nome: "d", x: 10, y: 0, w: 10, h: 10 })).toBe(0);
   });
 
-  it("o botao do dealer sai para FORA, e a ficha para DENTRO, na direcao oposta", () => {
-    // As duas ficam no eixo radial, em sentidos opostos: nunca disputam o mesmo espaco. O botao
-    // ja esteve na tangente, e la ele encontrava as cartas do assento VIZINHO nas pontas da
-    // elipse, onde os vizinhos ficam a ~111px um do outro.
+  it("o botao do dealer sai para FORA do trilho", () => {
+    // Para fora ele nao disputa espaco com ninguem: a ficha vai para dentro e as cartas pela
+    // perpendicular. O botao ja esteve na tangente, e la encontrava as cartas do assento VIZINHO
+    // nas pontas da elipse, onde os vizinhos ficam a ~111px um do outro.
     for (let i = 0; i < 9; i++) {
       const [x, y] = LUGARES[i];
       const [dx, dy] = direcaoDoDealer(i);
-      // Para fora = a mesma direcao do ponto, a partir do centro. Comparado por produto escalar e
-      // nao por sinal: `Math.cos(Math.PI / 2)` vale 6e-17 e nao zero, e comparar sinais fazia o
-      // guarda falhar no lugar de baixo por ruido numerico -- defeito do teste, nao do desenho.
       const n = Math.hypot(x - 50, y - 50);
       expect((dx * (x - 50) + dy * (y - 50)) / n, `lugar ${i}`).toBeCloseTo(1, 6);
-      // e a ficha vai para o lado contrario
-      const [fx, fy] = FICHAS[i];
-      expect((fx - x) * dx + (fy - y) * dy, `ficha x dealer no lugar ${i}`).toBeLessThan(0);
     }
   });
 
@@ -242,27 +270,41 @@ describe("a geometria da mesa", () => {
     expect(px("assento", 4000, 4000)).toBe(76);
   });
 
-  it("a escala das fichas esta DENTRO da janela medida", () => {
-    // A janela tem os dois lados ocupados: em 0,75 a ficha encosta no pod do proprio jogador, em
-    // 0,50 ela entra no texto do centro. O numero no meio nao e gosto, e o unico intervalo livre,
-    // e este guarda existe para a proxima pessoa nao "aproximar um pouco mais" sem rodar o
-    // medidor. A janela MUDOU quando a elipse passou a preencher a arena (o teto era 0,77), o que
-    // e a prova de que ela nao pode ser herdada de uma geometria anterior.
-    expect(ESCALA_DAS_FICHAS).toBeGreaterThanOrEqual(0.56);
-    expect(ESCALA_DAS_FICHAS).toBeLessThanOrEqual(0.74);
+  it("a ficha sai do POD, para dentro, e nao numa fracao do raio", () => {
+    // A fracao do raio amarrava a distancia ao tamanho da mesa, e quebrou nas duas pontas: fichas
+    // orfas no meio do feltro quando a fracao era pequena, e fichas por cima do pod no celular,
+    // onde a arena e pequena (52px2 medidos em 320px de largura).
+    for (let i = 0; i < 9; i++) {
+      const [x, y] = LUGARES[i];
+      const [dx, dy] = direcaoDaFicha(i);
+      const n = Math.hypot(x - 50, y - 50);
+      // para DENTRO: contra a direcao do ponto
+      expect((dx * (x - 50) + dy * (y - 50)) / n, `lugar ${i}`).toBeCloseTo(-1, 6);
+      // e oposta ao botao do dealer, que sai para fora
+      const [ex, ey] = direcaoDoDealer(i);
+      expect(dx * ex + dy * ey, `lugar ${i}`).toBeCloseTo(-1, 6);
+    }
   });
 
-  it("as fichas ficam DENTRO do trilho, e os assentos SOBRE ele", () => {
-    // Duas listas descrevendo a mesma elipse é como elas divergem: as duas saem de `naElipse`.
+  it("a medida em px e a MESMA conta da string de CSS", () => {
+    // Uma tabela, dois consumidores. Se `px` divergir de `medida`, o medidor mede uma mesa que o
+    // jogador não vê -- o pior defeito possível numa ferramenta de medição.
+    expect(medida(PARAMS.assento)).toBe("clamp(34px, min(6.6cqw, 12.2cqh), 76px)");
+    // 830x440: a altura é quem limita (12.2% de 440 = 53.7 < 6.6% de 830 = 54.8)
+    expect(px("assento", 830, 440)).toBeCloseTo(53.68, 1);
+    // 830x880: a largura limita
+    expect(px("assento", 830, 880)).toBeCloseTo(54.78, 1);
+    // card minúsculo: o piso segura
+    expect(px("assento", 200, 100)).toBe(34);
+    // card enorme: o teto segura
+    expect(px("assento", 4000, 4000)).toBe(76);
+  });
+
+  it("os nove lugares estao SOBRE a elipse que preenche a arena", () => {
     LUGARES.forEach(([x, y], i) => {
-      const [fx, fy] = FICHAS[i];
-      const distAssento = Math.hypot(x - 50, y - 50);
-      const distFicha = Math.hypot(fx - 50, fy - 50);
-      expect(distFicha, `lugar ${i}`).toBeLessThan(distAssento);
-      // e na MESMA direção, para não haver dúvida de quem apostou
-      const ang = Math.atan2(y - 50, x - 50);
-      const angF = Math.atan2(fy - 50, fx - 50);
-      expect(Math.abs(ang - angF), `lugar ${i}`).toBeLessThan(0.01);
+      // em % da arena, a elipse tem raio 50 nos dois eixos: o ponto esta na borda dela
+      const r = Math.hypot((x - 50) / 50, (y - 50) / 50);
+      expect(r, `lugar ${i}`).toBeCloseTo(1, 6);
     });
     expect(ANGULOS.length).toBe(9);
   });
