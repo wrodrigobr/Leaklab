@@ -93,13 +93,45 @@ def _execute(conn, sql: str, params=None):
     return conn.execute(sql, params or ())
 
 
-def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = None) -> tuple[str, tuple]:
-    """
-    Retorna (where_clause, params) para filtrar torneios por volume ou por data.
+#: Teto de MAOS do escopo. Ele existe na dimensao que custa: o peso da consulta cresce com maos,
+#: nao com meses -- seis meses de um grinder pesam mais que dois anos de um recreativo. Numero do
+#: dono (17/09), e hoje ninguem chega perto: a maior conta da base tem ~280 torneios, e a do dono
+#: 106 torneios com 5.396 maos.
+TETO_DE_MAOS_DO_ESCOPO = 30_000
 
-    - last_n=N (N>0) → últimos N torneios JOGADOS do usuário
-    - last_n=0        → HISTÓRICO genuíno: toda a conta, sem teto de dias nem de contagem
-    - last_n=None     → torneios JOGADOS nos últimos `days` dias
+#: Quanto para tras o seletor de data pode olhar. Nao e protecao de custo (disso cuida o teto de
+#: maos): e para o seletor nao oferecer 2019 a quem comecou este ano.
+MESES_MAXIMOS_DO_ESCOPO = 12
+
+
+def _build_tournament_filter(user_id: int, days: int = 90, escopo=None) -> tuple[str, tuple]:
+    """
+    Retorna (where_clause, params) para filtrar torneios por volume, por maos ou por data.
+
+    ── As quatro formas do `escopo` ─────────────────────────────────────────────────────────
+
+    - `N` (int > 0)  → últimos N torneios JOGADOS do usuário
+    - `0`            → HISTÓRICO genuíno: toda a conta, sem teto de dias nem de contagem
+    - `None`         → torneios JOGADOS nos últimos `days` dias
+    - `dict`         → `{'tipo': 'maos', 'n': X}` ou `{'tipo': 'periodo', 'de': ..., 'ate': ...}`
+
+    ── Por que `dict` e nao um parametro novo (17/09) ───────────────────────────────────────
+
+    O dono pediu o filtro com tres dimensoes (torneios, maos, faixa de data). Medido antes de
+    escolher: `last_n` aparece 295 vezes no projeto (109 aqui, 54 na app, 132 em 13 arquivos de
+    teste) e ainda e o nome do parametro HTTP. Um parametro NOVO teria de atravessar 38 funcoes do
+    repositorio e 25 endpoints; renomear tudo seria churn que ninguem pediu.
+
+    Das 29 linhas que mexem com o `last_n`, 24 apenas o REPASSAM para esta funcao -- entao esta
+    funcao e o unico lugar onde escopo vira SQL, e alargar o TIPO do que ela aceita alcanca os 38
+    chamadores sem tocar em nenhum. `get_evolution_metrics` e a unica excecao, porque usa o valor
+    como `LIMIT`, e ela foi ensinada junto.
+
+    O preco disso e um nome que fica curto (`last_n` carregando um escopo). O que paga o preco e a
+    varredura em `test_escopo_do_dashboard.py`: ela chama TODAS as funcoes que recebem `last_n` com
+    um escopo de dict e exige que nenhuma quebre. Sem ela, isto seria um tipo alargado pela metade.
+
+    ── Por que o eixo e `played_at` ─────────────────────────────────────────────────────────
 
     03/09 (2º achado do dono, mesma auditoria): o eixo era `imported_at` (data do UPLOAD), de
     propósito — "mostra torneios antigos que você acabou de subir". Fazia sentido pro caso de
@@ -109,29 +141,59 @@ def _build_tournament_filter(user_id: int, days: int = 90, last_n: int | None = 
     processava por T# do arquivo, não por data de jogo). Sob o eixo antigo, "últimos 50" seria
     uma fatia arbitrária da ORDEM DO SCRIPT — nada a ver com "como ele está jogando agora", que
     é a pergunta que o filtro existe pra responder. Trocado pra `played_at` (0 nulos em 479
-    torneios na base inteira, medido antes de trocar) — já é o eixo usado pra ORDENAR os
-    gráficos (get_evolution_metrics, get_decisions_for_elo_curve); agora também FILTRA.
+    torneios na base inteira, medido antes de trocar).
 
-    (1º achado, mesma auditoria): antes só tinha DOIS modos, e "Todos" mandava `last_n=None`
-    — que cai no fallback de `days` (90), então "Todos" secretamente significava "últimos 90
-    dias", sem jeito nenhum de ver o histórico de verdade em nenhum dos ~14 chamadores.
-    `last_n=0` é o sentinela pra isso — flui sozinho pelos chamadores existentes (regra 5).
+    (1º achado, mesma auditoria): antes só tinha DOIS modos, e "Todos" mandava `None` — que cai no
+    fallback de `days` (90), então "Todos" secretamente significava "últimos 90 dias". `0` é o
+    sentinela pra isso — flui sozinho pelos chamadores existentes (regra 5).
     """
     # COALESCE p/ played_at nulo (0 casos medidos em produção — mas fixtures de teste antigas
     # e qualquer torneio futuro sem data de jogo extraída não podem SUMIR do filtro por causa
     # disso: `played_at >= since` com NULL não é verdadeiro em SQL nenhum, o torneio evapora
     # em silêncio de toda tela com janela. Regra 6: sem prova de recência, cai no que existe.
-    if last_n == 0:
+    _EIXO = "COALESCE(played_at, imported_at)"
+
+    if isinstance(escopo, dict):
+        tipo = (escopo.get('tipo') or '').strip()
+        if tipo == 'maos':
+            # Ultimas X MAOS: pega torneios por data decrescente enquanto o acumulado ANTES deste
+            # torneio ainda nao alcancou X. O torneio que cruza o teto entra inteiro -- cortar mao
+            # no meio de um torneio quebraria o modelo (o filtro e de torneios, e toda tela soma
+            # por torneio). Entao o resultado pode passar um pouco de X, e passar e melhor que
+            # devolver menos do que o jogador pediu.
+            n = max(1, min(int(escopo.get('n') or TETO_DE_MAOS_DO_ESCOPO), TETO_DE_MAOS_DO_ESCOPO))
+            return (
+                "t.id IN (SELECT id FROM (SELECT id, SUM(COALESCE(hands_count, 0)) OVER ("
+                f"ORDER BY {_EIXO} DESC, id DESC ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING"
+                ") AS antes FROM tournaments WHERE user_id = ?) x WHERE COALESCE(antes, 0) < ?)",
+                (user_id, n),
+            )
+        if tipo == 'periodo':
+            de, ate = escopo.get('de'), escopo.get('ate')
+            if de and ate:
+                # data-only inclui os dois dias limite, e e o que o jogador espera de "de 01/06 a
+                # 30/06": o torneio jogado no dia 30 entra.
+                return (f"t.user_id = ? AND {_EIXO} >= ? AND {_EIXO} <= ?",
+                        (user_id, str(de), str(ate) + ' 23:59:59'))
+            if de:
+                return (f"t.user_id = ? AND {_EIXO} >= ?", (user_id, str(de)))
+            if ate:
+                return (f"t.user_id = ? AND {_EIXO} <= ?", (user_id, str(ate) + ' 23:59:59'))
+        # dict que nao diz nada e HISTORICO, e nao erro: escopo desconhecido devolvendo zero linhas
+        # seria a tela vazia sem explicacao.
         return "t.user_id = ?", (user_id,)
-    if last_n is not None:
+
+    if escopo == 0:
+        return "t.user_id = ?", (user_id,)
+    if escopo is not None:
         return (
             "t.id IN (SELECT id FROM tournaments WHERE user_id = ? "
-            "ORDER BY COALESCE(played_at, imported_at) DESC LIMIT ?)",
-            (user_id, last_n),
+            f"ORDER BY {_EIXO} DESC LIMIT ?)",
+            (user_id, escopo),
         )
     from datetime import datetime, timedelta
     since = (datetime.utcnow() - timedelta(days=days)).strftime('%Y-%m-%d')
-    return "t.user_id = ? AND COALESCE(t.played_at, t.imported_at) >= ?", (user_id, since)
+    return f"t.user_id = ? AND {_EIXO} >= ?", (user_id, since)
 
 
 # ── Multiway postflop fica FORA de tudo que soma, ranqueia ou pontua ─────────────────────
@@ -1263,13 +1325,21 @@ def get_evolution_metrics(user_id: int, days: int = 90, last_n: int | None = Non
     aparecia). Só o /history/evolution passa True. Os OUTROS consumidores (study plan, coach, presença de
     dados) mantêm imported_at (default) — senão um torneio jogado há >90 dias, importado agora, some do
     check de presença e quebra o plano de estudo."""
-    if last_n == 0:
+    if isinstance(last_n, dict):
+        # ── A UNICA funcao que nao repassa o escopo ────────────────────────────────────────
+        #
+        # Ela usa o valor como `LIMIT`, e por isso nao pode simplesmente entregar o dict adiante.
+        # Reaproveita o construtor unico e tira o `t.` do alias, porque aqui a consulta e na
+        # tabela sem apelido. Em 05/09 esta mesma funcao ficou de fora do sentinela `0` e o
+        # grafico de bankroll vinha VAZIO com "Historico" selecionado, enquanto todo o resto
+        # trazia o acervo. Regra 5: a janela tem duas implementacoes, e ensinar so uma e o
+        # defeito que volta.
+        tf, tp = _build_tournament_filter(user_id, days, last_n)
+        where, params = tf.replace("t.", ""), tp
+    elif last_n == 0:
         # `last_n=0` e o sentinela de HISTORICO GENUINO, o mesmo que `_build_tournament_filter`
         # usa. Aqui ele nao existia, e como 0 nao e None caia no ramo de baixo virando
-        # `LIMIT 0` — **zero linhas**. Medido em 05/09: com "Historico" no filtro do dashboard,
-        # o grafico de evolucao do bankroll vinha VAZIO enquanto todos os outros cards traziam
-        # o acervo inteiro. Regra 5: a janela tem duas implementacoes, e o sentinela so foi
-        # ensinado a uma delas.
+        # `LIMIT 0` — **zero linhas** (medido em 05/09, ver o comentario acima).
         where = "user_id = ?"
         params = (user_id,)
     elif last_n is not None:
@@ -12587,7 +12657,7 @@ def get_maos_do_leak(user_id: int, street: str, action_taken: str, best_action: 
     from leaklab.decision_engine_v11 import ev_loss_trustworthy
     conn = get_conn()
     try:
-        _tf, _tp = _build_tournament_filter(user_id, last_n=last_n)
+        _tf, _tp = _build_tournament_filter(user_id, escopo=last_n)
         tids = [r['id'] for r in _fetchall(conn, _adapt(
             f"SELECT id FROM tournaments t WHERE {_tf} ORDER BY COALESCE(t.played_at, t.imported_at) DESC"), _tp)]
         if not tids:
@@ -12670,7 +12740,7 @@ def get_ev_summary(user_id: int, last_n: int | None = 50) -> dict:
     try:
         # MESMO helper que filtra os outros 8 cards do dashboard — last_n=0 é histórico
         # genuíno, last_n=N os N mais recentes por DATA DE JOGO. Sem corte separado aqui.
-        _tf, _tp = _build_tournament_filter(user_id, last_n=last_n)
+        _tf, _tp = _build_tournament_filter(user_id, escopo=last_n)
         # ORDER BY explícito: tids[:5]/tids[5:10]/tids[:12] abaixo (tendência e sparkline)
         # dependem de "mais recente primeiro" — sem isto a ordem do SELECT não é garantida.
         # played_at (JOGO), não imported_at (upload) — mesmo eixo do _build_tournament_filter.

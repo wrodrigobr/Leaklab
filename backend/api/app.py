@@ -2085,13 +2085,54 @@ def history_tournament_report_pdf(tournament_id):
 
 
 def _last_n_da_query():
-    """O `last_n` do filtro "Volume" do dashboard, ou None. `0` e HISTORICO genuino e tem de
-    sobreviver: por isso a checagem e por presenca do parametro, nao por truthiness — `"0"` e
-    string nao-vazia, entao `int("0")` = 0 chega inteiro ao `_build_tournament_filter`.
+    """O ESCOPO do filtro do dashboard: as tres dimensoes que o jogador pode escolher.
+
+    ── As formas que ela devolve ─────────────────────────────────────────────────────────────
+
+    - `int` (`last_n=N`)   → ultimos N torneios. `0` e HISTORICO genuino.
+    - `None`              → nenhum filtro na query: cai na janela de dias do chamador.
+    - `dict`              → `{'tipo': 'maos', 'n': X}` ou `{'tipo': 'periodo', 'de':, 'ate':}`
+
+    O nome ficou `_last_n_da_query` de proposito: ele e chamado em 25 endpoints, e o parametro
+    HTTP `last_n` e contrato com o front. Ver `_build_tournament_filter`, que e quem interpreta.
+
+    ── Por que a checagem e por PRESENCA ─────────────────────────────────────────────────────
+
+    `0` e historico genuino e tem de sobreviver: `"0"` e string nao-vazia, entao `int("0")` = 0
+    chega inteiro ao construtor. Truthiness aqui transformaria "historico" em "sem filtro".
 
     05/09: esta linha vivia copiada em 11 endpoints, e 24 funcoes de analise nem recebiam o
     parametro — o filtro da tela nao as alcancava. Regra 5: um lugar, e os endpoints novos
-    chamam aqui em vez de copiar."""
+    chamam aqui em vez de copiar.
+
+    ── Os tetos ──────────────────────────────────────────────────────────────────────────────
+
+    O de MAOS mora no construtor, porque e ele que virou SQL e e onde a conta acontece. O de
+    MESES e aparado aqui: uma data mais antiga que o teto vira o teto, em vez de 400 recusado --
+    recusar obrigaria a tela a saber a regra do servidor para nao mandar pedido invalido.
+    """
+    from datetime import date, timedelta
+
+    from database.repositories import MESES_MAXIMOS_DO_ESCOPO
+
+    maos = (request.args.get('maos') or '').strip()
+    if maos:
+        try:
+            n = int(float(maos))
+        except (TypeError, ValueError):
+            n = 0
+        if n > 0:
+            return {'tipo': 'maos', 'n': n}
+
+    de = (request.args.get('de') or '').strip()
+    ate = (request.args.get('ate') or '').strip()
+    if de or ate:
+        # o piso do seletor: 12 meses para tras, contados de hoje
+        piso = (date.today() - timedelta(days=MESES_MAXIMOS_DO_ESCOPO * 31)).isoformat()
+        if de and de < piso:
+            de = piso
+        return {'tipo': 'periodo', 'de': de or piso, 'ate': ate or date.today().isoformat()}
+
     raw = request.args.get('last_n')
     return int(raw) if raw else None
 
@@ -2346,9 +2387,14 @@ def player_ev_summary():
     `get_ev_summary` (50) — mas o front sempre manda um valor explícito.
     """
     from database.repositories import get_ev_summary
-    raw = request.args.get('last_n')
-    if raw:
-        return jsonify(get_ev_summary(g.user_id, last_n=int(raw)))
+    # Pelo HELPER, e nao lendo `last_n` da query aqui. Esta linha lia direto, e por isso as duas
+    # dimensoes novas (maos e faixa de data) NAO chegavam neste card: o jogador escolheria
+    # "ultimas 5.000 maos" e o EV continuaria nos 50 torneios do default, sem nada na tela
+    # dizendo. E a regra 5 outra vez, e foi um guarda de varredura que achou -- nenhum endpoint
+    # pode ler `last_n` da query, so o helper.
+    escopo = _last_n_da_query()
+    if escopo is not None:
+        return jsonify(get_ev_summary(g.user_id, last_n=escopo))
     return jsonify(get_ev_summary(g.user_id))
 
 

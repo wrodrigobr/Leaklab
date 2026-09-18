@@ -261,7 +261,21 @@
     "all": "Histórico",
     "scopeLastN": "Estes números são dos seus últimos {{n}} torneios",
     "scopeAll": "Estes números são de todo o seu histórico, {{tourneys}} torneios",
-    "sample": "{{hands}} mãos"
+    "sample": "{{hands}} mãos",
+    "titulo": "escopo dos números",
+    "ajuda": "Escolha de onde vêm os números desta página. A escolha fica guardada.",
+    "ajustar": "filtro",
+    "fechar": "fechar",
+    "aplicar": "aplicar",
+    "de": "de",
+    "ate": "até",
+    "aba": {
+      "torneios": "torneios",
+      "maos": "mãos",
+      "periodo": "período"
+    },
+    "scopeMaos": "Estes números são das suas últimas {{maos}} mãos",
+    "scopePeriodo": "Estes números são dos torneios jogados de {{de}} a {{ate}}"
   },
   "form": {
     "title": "Forma Recente",

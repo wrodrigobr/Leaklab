@@ -41,7 +41,7 @@ const MAO = (id: number, cartas: string, ev: number) => ({
 function monta() {
   return render(
     <MemoryRouter>
-      <MaosDoLeak street="flop" actionTaken="fold" bestAction="call" lastN={50} />
+      <MaosDoLeak street="flop" actionTaken="fold" bestAction="call" escopo={{ tipo: "torneios", n: 50 }} />
     </MemoryRouter>
   );
 }
@@ -57,7 +57,8 @@ describe("mãos por trás de um leak", () => {
     });
     monta();
     // street + jogada + ideal: é o que impede a lista de trazer mãos de outro par de ação
-    await waitFor(() => expect(evLeakHands).toHaveBeenCalledWith("flop", "fold", "call", 50, 200));
+    await waitFor(() => expect(evLeakHands).toHaveBeenCalledWith("flop", "fold", "call",
+      { tipo: "torneios", n: 50 }, 200));
     const painel = await screen.findByTestId("leak-maos");
     expect(painel.textContent).toContain("v2.leakHandsTitle:19,41.9");
     expect(painel.textContent).toContain("v2.leakHandsPartial:2,19");   // declara que mostra parte

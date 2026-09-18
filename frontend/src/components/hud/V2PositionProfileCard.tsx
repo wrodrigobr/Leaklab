@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { metrics } from "@/lib/api";
-import type { PlayerStatsResponse, PositionDetailResponse, PositionOpenMatrixResponse, PositionProfileResponse, PositionStatCell, StackBand, TableSize } from "@/lib/api";
+import type { EscopoDoDashboard, PlayerStatsResponse, PositionDetailResponse, PositionOpenMatrixResponse, PositionProfileResponse, PositionStatCell, StackBand, TableSize } from "@/lib/api";
 import { MatrizDeAbertura } from "./MatrizDeAbertura";
 
 /**
@@ -337,7 +337,9 @@ export function V2PositionProfileCard({
   agrupado?: boolean;
   onAgrupado?: (v: boolean) => void;
   /** o recorte de volume da tela, para o detalhe pedir o MESMO conjunto da grade */
-  lastN?: number | null;
+  /** O MESMO escopo do dashboard: o detalhe do assento tem de sair do recorte que a faixa verde
+   *  declara. Era `number | null`, que so sabia contar torneios. */
+  lastN?: EscopoDoDashboard | number | null;
   /** O payload do HUD PRINCIPAL, para a linha TOTAL. Deliberadamente NAO recalculado aqui:
    *  a linha existe para o jogador conferir que a grade reconcilia com o numero grande da
    *  tela, e reconstruir a conta abriria a porta para as duas discordarem — foi exatamente
@@ -368,8 +370,8 @@ export function V2PositionProfileCard({
     setDetalheDados(null); setMatrizDados(null); setDetalheErro(false);
     // RFI abre a matriz das maos abertas (outro endpoint, mesmo recorte); os outros, o "contra quem"
     const pedido = detalhe.stat === "rfi"
-      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN ?? undefined, detalhe.stack ?? null, detalhe.mesa ?? null).then((d) => { if (vivo) setMatrizDados(d); })
-      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN ?? undefined, null, null).then((d) => { if (vivo) setDetalheDados(d); });
+      ? metrics.playerStatsByPositionHands(detalhe.position, 90, lastN, detalhe.stack ?? null, detalhe.mesa ?? null).then((d) => { if (vivo) setMatrizDados(d); })
+      : metrics.playerStatsByPositionDetail(detalhe.position, detalhe.stat, 90, lastN, null, null).then((d) => { if (vivo) setDetalheDados(d); });
     pedido.catch(() => { if (vivo) setDetalheErro(true); });
     return () => { vivo = false; };
   }, [detalhe, lastN]);

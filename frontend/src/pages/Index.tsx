@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENTO_LOTE } from "@/lib/refreshOnImport";
 import { useQuery } from "@tanstack/react-query";
 import { Coins, Layers, Percent, Target, GraduationCap, Brain, RotateCcw, Loader2, X } from "lucide-react";
@@ -21,6 +21,9 @@ import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { makeRenderCard } from "@/components/hud/dashboardCards";
 import { metrics, tournaments, support, EvolutionResponse, Tournament, PlayerStatsResponse, PositionProfileResponse, StackBand, TableSize, LeakRoiData, PressureProfile, ConfidenceDrift, PlayerDnaResponse, LeakGraphResponse, CareerProjection, CognitiveFailureData, StrategicTwinProfile, GtoAlignmentData, GtoPositionData, GtoQualityData, ResultsVsGtoData, LeakFinderData, SessionContextData } from "@/lib/api";
 import { ultimosTorneios } from "@/lib/ultimosTorneios";
+import { FiltroDeEscopo } from "@/components/hud/FiltroDeEscopo";
+import { lerEscopo, gravarEscopo } from "@/lib/escopoGuardado";
+import type { EscopoDoDashboard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { shouldShowDrift, readDriftSeen, writeDriftSeen } from "@/lib/driftDismiss";
 import { conviteCoachFechado, fecharConviteCoach } from "@/lib/conviteCoachDismiss";
@@ -107,7 +110,24 @@ const Index = () => {
   // jogador, e quem sobe acervo antigo (o perfil de quem chega novo) via 50 torneios de um
   // acervo de centenas sem perceber. Trocar exigiu ensinar o sentinela ao
   // `get_evolution_metrics`, que caia em `LIMIT 0` e devolvia o bankroll VAZIO.
-  const [volumeLimit, setVolumeLimit]     = useState<number | null>(0);
+  /**
+   * O ESCOPO do dashboard, guardado por usuario.
+   *
+   * "e devemos manter sessao, sempre usar a ultima escolha dele" (o dono, 17/09). Era um
+   * `useState(0)` que nascia em historico a cada recarga: o jogador escolhia "ultimos 50",
+   * atualizava a pagina e voltava ao acervo inteiro sem nada ter mudado na tela.
+   *
+   * `useState` com funcao: a leitura do storage acontece UMA vez, e nao a cada render.
+   */
+  const [escopo, setEscopoEstado] = useState<EscopoDoDashboard>(() => lerEscopo(user?.user_id));
+  const setEscopo = useCallback((e: EscopoDoDashboard) => {
+    setEscopoEstado(e);
+    gravarEscopo(user?.user_id, e);
+  }, [user?.user_id]);
+  // O usuario pode chegar DEPOIS do primeiro render (a sessao resolve em seguida), e ai o estado
+  // nasceu com o padrao. Sem isto, a escolha guardada so valeria a partir da segunda visita.
+  useEffect(() => { if (user?.user_id != null) setEscopoEstado(lerEscopo(user.user_id)); },
+            [user?.user_id]);
 
   // A marca d'água é por USUÁRIO (não por detecção), então só precisa reler quando o usuário muda.
   useEffect(() => { setDriftSeen(readDriftSeen(user?.user_id)); setConviteFechado(conviteCoachFechado(user?.user_id)); }, [user?.user_id]);
@@ -121,7 +141,7 @@ const Index = () => {
 
   useEffect(() => {
     setLoading(true);
-    const ln = volumeLimit ?? undefined;
+    const ln = escopo;
     Promise.all([
       metrics.evolution(90, ln).then(setEvo).catch(() => null),
       metrics.playerStats(90, ln).then(setPlayerStats).catch(() => null),
@@ -136,11 +156,16 @@ const Index = () => {
       metrics.dna(90, ln).then(setDnaData).catch(() => null),
       metrics.leakGraph(90, i18n.language, ln).then(setLeakGraph).catch(() => null),
       metrics.career(i18n.language, ln).then(setCareerData).catch(() => null),
-      metrics.cognitiveFailures(i18n.language, ln).then(setCognitiveData).catch(() => null),
-      metrics.strategicTwin(i18n.language, ln).then(setTwinData).catch(() => null),
+      // `90` e `180` EXPLICITOS: estas duas recebem (lang, days, escopo), e a chamada passava
+      // dois argumentos -- o filtro caia em `days`. Enquanto o escopo era `number` isso compilava
+      // calado, e os dois cards NUNCA foram filtrados: com "ultimos 50" eles consultavam 50 DIAS,
+      // e com historico, `days=0`. O tipo novo transformou o defeito posicional em erro de
+      // compilacao, que e onde ele devia estar.
+      metrics.cognitiveFailures(i18n.language, 90, ln).then(setCognitiveData).catch(() => null),
+      metrics.strategicTwin(i18n.language, 180, ln).then(setTwinData).catch(() => null),
       metrics.sessionContext().then(setSessionData).catch(() => null),
     ]).finally(() => setLoading(false));
-  }, [refreshKey, volumeLimit]);
+  }, [refreshKey, escopo]);
 
   // Trocar entre "por assento" e "agrupado" refaz SO a grade. No 1o render nao ha pedido: ela
   // ja vem no carregamento geral.
@@ -148,27 +173,27 @@ const Index = () => {
     if (isFree) return;
     if (!posAgrupado && !jaFiltrou.current) return;
     jaFiltrou.current = true;
-    const ln = volumeLimit ?? undefined;
+    const ln = escopo;
     let vivo = true;
     metrics.playerStatsByPosition(90, ln, null, posAgrupado, null).then((grade) => {
       if (!vivo) return;
       setPosProfile(grade);
     }).catch((e) => { if (!escondeSeEmValidacao(e)) console.error("perfil por posicao: visao agrupada falhou", e); });
     return () => { vivo = false; };
-  }, [posAgrupado, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- volumeLimit/refresh passam pelo efeito geral
+  }, [posAgrupado, isFree]);   // eslint-disable-line react-hooks/exhaustive-deps -- escopo/refresh passam pelo efeito geral
 
   // Re-fetch only language-sensitive AI narratives when locale changes
   const langMounted = useRef(false);
   useEffect(() => {
     if (!langMounted.current) { langMounted.current = true; return; }
     // O mesmo recorte do filtro "Volume": o refetch por idioma nao pode devolver os cards
-    // num escopo diferente do que a faixa de escopo declara. `volumeLimit` fica fora das
+    // num escopo diferente do que a faixa de escopo declara. `escopo` fica fora das
     // deps de proposito — o efeito principal ja refaz tudo quando o filtro muda.
-    const ln = volumeLimit ?? undefined;
+    const ln = escopo;
     metrics.leakGraph(90, i18n.language, ln).then(setLeakGraph).catch(() => null);
     metrics.career(i18n.language, ln).then(setCareerData).catch(() => null);
-    metrics.cognitiveFailures(i18n.language, ln).then(setCognitiveData).catch(() => null);
-    metrics.strategicTwin(i18n.language, ln).then(setTwinData).catch(() => null);
+    metrics.cognitiveFailures(i18n.language, 90, ln).then(setCognitiveData).catch(() => null);
+    metrics.strategicTwin(i18n.language, 180, ln).then(setTwinData).catch(() => null);
   }, [i18n.language]);
 
   const handleUpload = () => setRefreshKey((k) => k + 1);
@@ -188,11 +213,11 @@ const Index = () => {
   // runtime (não literal) p/ o branch do clássico não virar código inalcançável no lint.
   const [dashV2] = useState<boolean>(true);
   // Bloco "Hoje" (headline, sólidas, leak mais caro, tendência, sangria por street) agora usa
-  // o MESMO `volumeLimit` do filtro "Volume" que já regia os outros cards — 03/09, unificação
+  // o MESMO escopo do filtro que já regia os outros cards — 03/09, unificação
   // pós-auditoria (antes eram dois controles fazendo a mesma coisa com convenções diferentes).
   const { data: evSummary } = useQuery({
-    queryKey: ["ev-summary", refreshKey, volumeLimit],
-    queryFn: () => metrics.evSummary(volumeLimit ?? undefined),
+    queryKey: ["ev-summary", refreshKey, escopo],
+    queryFn: () => metrics.evSummary(escopo),
     staleTime: 120_000,
     enabled: dashV2,
   });
@@ -217,7 +242,7 @@ const Index = () => {
 
   // KPIs derivados de tourns, no MESMO recorte dos cards: os N mais recentes por data de jogo
   // (ver `ultimosTorneios` — o `slice(-N)` antigo pegava os mais ANTIGOS).
-  const visibleTourns = useMemo(() => ultimosTorneios(tourns, volumeLimit), [tourns, volumeLimit]);
+  const visibleTourns = useMemo(() => ultimosTorneios(tourns, escopo), [tourns, escopo]);
   // ROI: numerador e denominador sobre o MESMO conjunto (só torneios com buy-in conhecido),
   // senão lucro de torneio sem buy_in entra sem o investimento e infla o ROI.
   const ratedTourns   = visibleTourns.filter((t) => (t.buy_in ?? 0) > 0);
@@ -245,8 +270,8 @@ const Index = () => {
   const pendingGto = pendingGtoData?.pending ?? 0;
 
   const { data: gtoAlignmentData } = useQuery<GtoAlignmentData>({
-    queryKey: ["gto-alignment", refreshKey, volumeLimit],
-    queryFn: () => metrics.gtoAlignment(volumeLimit ?? undefined),
+    queryKey: ["gto-alignment", refreshKey, escopo],
+    queryFn: () => metrics.gtoAlignment(escopo),
     staleTime: 120_000,
   });
 
@@ -255,26 +280,26 @@ const Index = () => {
     : null;
 
   const { data: gtoPositionData } = useQuery<GtoPositionData>({
-    queryKey: ["gto-position", refreshKey, volumeLimit],
-    queryFn: () => metrics.gtoPosition(volumeLimit ?? undefined),
+    queryKey: ["gto-position", refreshKey, escopo],
+    queryFn: () => metrics.gtoPosition(escopo),
     staleTime: 120_000,
   });
 
   const { data: gtoQualityData } = useQuery<GtoQualityData>({
-    queryKey: ["gto-quality", refreshKey, volumeLimit],
-    queryFn: () => metrics.gtoQuality(volumeLimit ?? undefined),
+    queryKey: ["gto-quality", refreshKey, escopo],
+    queryFn: () => metrics.gtoQuality(escopo),
     staleTime: 120_000,
   });
 
   const { data: resultsVsGtoData } = useQuery<ResultsVsGtoData>({
-    queryKey: ["results-vs-gto", refreshKey, volumeLimit],
-    queryFn: () => metrics.resultsVsGto(volumeLimit ?? undefined),
+    queryKey: ["results-vs-gto", refreshKey, escopo],
+    queryFn: () => metrics.resultsVsGto(escopo),
     staleTime: 120_000,
   });
 
   const { data: leakFinderData } = useQuery<LeakFinderData>({
-    queryKey: ["leak-finder", refreshKey, volumeLimit],
-    queryFn: () => metrics.leakFinder(volumeLimit ?? undefined),
+    queryKey: ["leak-finder", refreshKey, escopo],
+    queryFn: () => metrics.leakFinder(escopo),
     staleTime: 120_000,
   });
 
@@ -353,8 +378,8 @@ const Index = () => {
       <DashboardV2
         onUpload={handleUpload}
         evSummary={evSummary ?? null}
-        volumeLimit={volumeLimit}
-        onVolumeLimitChange={setVolumeLimit}
+        escopo={escopo}
+        onEscopo={setEscopo}
         hasData={hasData}
         renderCard={renderCard}
         gtoQuality={gtoQualityData}
@@ -369,7 +394,7 @@ const Index = () => {
         positionProfileGeral={null}
         positionGrouped={posAgrupado}
         onPositionGrouped={setPosAgrupado}
-        positionLastN={volumeLimit}
+        positionLastN={escopo}
         drift={showDrift && driftData
           ? { detected: true, sessions: driftData.affected_sessions }
           : null}
@@ -403,29 +428,12 @@ const Index = () => {
             </div>
             {hasData && (
               <div className="flex items-center gap-2">
-                {/* Volume filter — 0 = histórico genuíno (03/09: antes era `null`, que
-                    secretamente caía no fallback de 90 dias do backend; "Todos" mentia). */}
-                <div className="flex items-center gap-px rounded-md ring-1 ring-border overflow-hidden">
-                  {([20, 50, 100, 0] as number[]).map((val) => {
-                    const label = val === 0 ? t("volumeFilter.all")
-                      : val === 20 ? t("volumeFilter.last20")
-                      : val === 50 ? t("volumeFilter.last50")
-                      : t("volumeFilter.last100");
-                    return (
-                      <button
-                        key={String(val)}
-                        onClick={() => setVolumeLimit(val)}
-                        className={`px-3 py-2.5 sm:px-2.5 sm:py-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${
-                          volumeLimit === val
-                            ? "bg-primary/20 text-primary"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* ── O MESMO filtro do dashboard novo (17/09) ──────────────────────────
+                    Havia DOIS controles de escopo: este, do dashboard legado, e o da faixa
+                    verde do V2. Com tres dimensoes, manter dois seria manter duas verdades --
+                    o jogador escolheria "ultimas 5.000 maos" num e a lista continuaria cortada
+                    por contagem de torneios no outro. Um componente, um escopo. */}
+                <FiltroDeEscopo escopo={escopo} onEscopo={setEscopo} />
                 <button
                   onClick={resetLayout}
                   title={tc("actions.resetLayout")}

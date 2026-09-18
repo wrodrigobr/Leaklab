@@ -92,7 +92,7 @@ def _semeia():
 
 def test_o_sentinela_esta_declarado_no_filtro_canonico():
     """A fonte da regra. Se ela mudar, o resto do arquivo esta medindo outra coisa."""
-    where, params = _build_tournament_filter(1, days=90, last_n=0)
+    where, params = _build_tournament_filter(1, days=90, escopo=0)
     assert '?' in where and len(params) >= 1
     # Historico nao pode carregar corte de data nem LIMIT.
     assert 'LIMIT' not in where.upper(), where

@@ -129,10 +129,10 @@ check(q_hist['total_with_gto'] == 45, f"gto-quality (outro consumidor): last_n=0
 check(q_janela40['total_with_gto'] == 40, f"gto-quality: last_n=40 vê só 40 (por played_at), veio {q_janela40['total_with_gto']}")
 
 # ── o helper cru, isolado: last_n=0 nunca aplica o fallback de dias, e usa played_at ─────────
-tf0, tp0 = _build_tournament_filter(999, days=90, last_n=0)
+tf0, tp0 = _build_tournament_filter(999, days=90, escopo=0)
 check('imported_at' not in tf0 and 'LIMIT' not in tf0, f"last_n=0 não tem teto de dias nem de contagem: {tf0}")
 check(tp0 == (999,), f"last_n=0 só filtra por user_id: {tp0}")
-tfN, _ = _build_tournament_filter(999, last_n=5)
+tfN, _ = _build_tournament_filter(999, escopo=5)
 # COALESCE(played_at, imported_at): JOGO tem prioridade, upload é só rede de seguranca pra
 # played_at nulo (fixture antiga, torneio sem data extraida) — nao pode sumir do filtro.
 check(tfN.index('played_at') < tfN.index('imported_at'), f"last_n=N prioriza JOGO sobre upload: {tfN}")

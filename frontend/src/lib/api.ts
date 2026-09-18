@@ -1,3 +1,4 @@
+import { queryDoEscopo, type EscopoDoDashboard } from "./escopo";
 import { getAcquisition } from "./acquisition";
 import type { PreflopRangesResp } from "@/components/replayer/RangePanel";
 
@@ -2722,18 +2723,46 @@ export interface EvSummary {
   last_n?: number | null;
 }
 
+/**
+ * O ESCOPO do dashboard: as tres dimensoes que o jogador escolhe no filtro.
+ *
+ * ── Por que ele existe como TIPO, e nao como numero (17/09) ───────────────────────────────────
+ *
+ * O dono pediu o filtro com tres dimensoes: ultimos N torneios, ultimas X maos (teto de 30 mil) e
+ * faixa de data (o seletor limitado a 12 meses).
+ *
+ * Antes era um `lastN?: number` em 23 funcoes deste arquivo, e o fragmento `last_n=${...}` estava
+ * escrito A MAO 24 vezes. Alargar isso em 24 lugares e exatamente como um card fica de fora do
+ * filtro e o dashboard passa a mostrar numeros de escopos DIFERENTES sob uma faixa que declara um
+ * so. `queryDoEscopo` e `comEscopo` sao a escrita unica, e ha guarda exigindo que nenhuma funcao
+ * monte o fragmento por conta.
+ */
+/**
+ * O ESCOPO vive em `./escopo`, e nao aqui.
+ *
+ * Ele nasceu neste arquivo e quebrou o `Index.onboarding.test.tsx`, que substitui o modulo inteiro
+ * da API por um dublê: as funcoes o dublê resolve, as CONSTANTES nao. Constante e tipo nao sao
+ * chamada de rede, e po-los no modulo de rede obriga todo dublê da API a conhece-los.
+ *
+ * O reexport existe para os imports que ja apontam para `@/lib/api` seguirem valendo.
+ */
+export {
+  TETO_DE_MAOS_DO_ESCOPO, MESES_MAXIMOS_DO_ESCOPO, queryDoEscopo, comEscopo,
+} from "./escopo";
+export type { EscopoDoDashboard } from "./escopo";
+
 export const metrics = {
   /** Mesmo parâmetro `last_n` do filtro "Volume" que já rege os outros cards do dashboard
       (evolution/playerStats/leakRoi/gtoQuality/...) — 0 = histórico, N = últimos N torneios. */
-  evSummary: (lastN?: number) =>
-    request<EvSummary>(`/player/ev-summary${lastN != null ? `?last_n=${lastN}` : ""}`),
+  evSummary: (escopo?: EscopoDoDashboard | number | null) =>
+    request<EvSummary>(`/player/ev-summary${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
   /** As maos de UMA linha do card de leaks. A chave e a mesma da linha: street + jogada + ideal. */
-  evLeakHands: (street: string, actionTaken: string, bestAction: string, lastN?: number, limit = 100, offset = 0) =>
+  evLeakHands: (street: string, actionTaken: string, bestAction: string, escopo?: EscopoDoDashboard | number | null, limit = 100, offset = 0) =>
     request<LeakHands>(
       `/player/ev-leaks/hands?street=${encodeURIComponent(street)}&action_taken=${encodeURIComponent(actionTaken)}` +
       `&best_action=${encodeURIComponent(bestAction)}&limit=${limit}&offset=${offset}` +
-      (lastN != null ? `&last_n=${lastN}` : "")),
+      (escopo != null ? `&${queryDoEscopo(escopo)}` : "")),
 
   leaderboard: (period = 90) =>
     request<LeaderboardResponse>(`/metrics/leaderboard?period=${period}`),
@@ -2757,48 +2786,48 @@ export const metrics = {
   coachReplay: (tournamentId: string | number) =>
     request<CoachReplayData>(`/player/coach-replay/${tournamentId}`),
 
-  evolution: (days = 90, lastN?: number) =>
-    request<EvolutionResponse>(`/history/evolution?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  evolution: (days = 90, escopo?: EscopoDoDashboard | number | null) =>
+    request<EvolutionResponse>(`/history/evolution?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
-  breakdown: (days = 90, lastN?: number) =>
-    request<BreakdownResponse>(`/history/breakdown?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  breakdown: (days = 90, escopo?: EscopoDoDashboard | number | null) =>
+    request<BreakdownResponse>(`/history/breakdown?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
-  playerStats: (days = 90, lastN?: number, stack?: StackBand | null) =>
+  playerStats: (days = 90, escopo?: EscopoDoDashboard | number | null, stack?: StackBand | null) =>
     request<PlayerStatsResponse>(
-      `/metrics/player-stats?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
+      `/metrics/player-stats?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}`),
 
   /** Perfil por ASSENTO. Pergunta diferente do gtoPosition: aquele diz de onde o jogador
    *  erra mais, este diz qual e o perfil dele ali. */
   /** "Contra quem": o 3-Bet ou o Fold 3-Bet de um assento aberto por oponente (AY-15). */
-  playerStatsByPositionDetail: (position: string, stat: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | null) =>
+  playerStatsByPositionDetail: (position: string, stat: string, days = 90, escopo?: EscopoDoDashboard | number | null, stack?: StackBand | null, mesa?: TableSize | null) =>
     request<PositionDetailResponse>(
-      `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
+      `/metrics/player-stats/by-position/detail?position=${encodeURIComponent(position)}&stat=${encodeURIComponent(stat)}&days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
   /** Matriz 13x13 das maos abertas de um assento (ou grupo), voce x solver (AY-15 c). */
-  playerStatsByPositionHands: (position: string, days = 90, lastN?: number, stack?: StackBand | null, mesa?: TableSize | null) =>
+  playerStatsByPositionHands: (position: string, days = 90, escopo?: EscopoDoDashboard | number | null, stack?: StackBand | null, mesa?: TableSize | null) =>
     request<PositionOpenMatrixResponse>(
-      `/metrics/player-stats/by-position/hands?position=${encodeURIComponent(position)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
+      `/metrics/player-stats/by-position/hands?position=${encodeURIComponent(position)}&days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
-  playerStatsByPosition: (days = 90, lastN?: number, stack?: StackBand | null, agrupado = false, mesa?: TableSize | null) =>
+  playerStatsByPosition: (days = 90, escopo?: EscopoDoDashboard | number | null, stack?: StackBand | null, agrupado = false, mesa?: TableSize | null) =>
     request<PositionProfileResponse>(
-      `/metrics/player-stats/by-position?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${agrupado ? "&group=1" : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
+      `/metrics/player-stats/by-position?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}${stack ? `&stack=${encodeURIComponent(stack)}` : ""}${agrupado ? "&group=1" : ""}${mesa ? `&mesa=${encodeURIComponent(mesa)}` : ""}`),
 
-  level: (lastN?: number) =>
-    request<PlayerLevel>(`/metrics/level${lastN != null ? `?last_n=${lastN}` : ""}`),
+  level: (escopo?: EscopoDoDashboard | number | null) =>
+    request<PlayerLevel>(`/metrics/level${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
-  leakRoi: (days = 90, lastN?: number) =>
+  leakRoi: (days = 90, escopo?: EscopoDoDashboard | number | null) =>
     request<{ source: 'gto' | 'heuristic'; leaks: LeakRoiData[] }>(
-      `/player/leak-roi?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`,
+      `/player/leak-roi?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`,
     ),
 
   drillStats: (days = 30) =>
     request<DrillStats>(`/player/drill-stats?days=${days}`),
 
-  pressureProfile: (days = 90, lastN?: number) =>
-    request<PressureProfile>(`/player/pressure-profile?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  pressureProfile: (days = 90, escopo?: EscopoDoDashboard | number | null) =>
+    request<PressureProfile>(`/player/pressure-profile?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
-  confidenceDrift: (days = 30, lastN?: number) =>
-    request<ConfidenceDrift>(`/player/confidence-drift?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  confidenceDrift: (days = 30, escopo?: EscopoDoDashboard | number | null) =>
+    request<ConfidenceDrift>(`/player/confidence-drift?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
   pendingGtoCount: () =>
     request<{ pending: number }>(`/player/pending-gto-count`),
@@ -2809,41 +2838,41 @@ export const metrics = {
   eloCurve: () =>
     request<EloCurveResponse>(`/player/elo-curve`),
 
-  gtoQuality: (lastN?: number) =>
-    request<GtoQualityData>(`/player/gto-quality${lastN != null ? `?last_n=${lastN}` : ""}`),
+  gtoQuality: (escopo?: EscopoDoDashboard | number | null) =>
+    request<GtoQualityData>(`/player/gto-quality${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
-  gtoAlignment: (lastN?: number) =>
-    request<GtoAlignmentData>(`/player/gto-alignment${lastN != null ? `?last_n=${lastN}` : ""}`),
+  gtoAlignment: (escopo?: EscopoDoDashboard | number | null) =>
+    request<GtoAlignmentData>(`/player/gto-alignment${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
-  gtoPosition: (lastN?: number) =>
-    request<GtoPositionData>(`/player/gto-position${lastN != null ? `?last_n=${lastN}` : ""}`),
+  gtoPosition: (escopo?: EscopoDoDashboard | number | null) =>
+    request<GtoPositionData>(`/player/gto-position${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
-  gtoAlignmentMatrix: (lastN?: number) =>
-    request<GtoAlignmentMatrixData>(`/player/gto-alignment-matrix${lastN != null ? `?last_n=${lastN}` : ""}`),
+  gtoAlignmentMatrix: (escopo?: EscopoDoDashboard | number | null) =>
+    request<GtoAlignmentMatrixData>(`/player/gto-alignment-matrix${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
-  resultsVsGto: (lastN?: number) =>
-    request<ResultsVsGtoData>(`/player/results-vs-gto${lastN != null ? `?last_n=${lastN}` : ""}`),
+  resultsVsGto: (escopo?: EscopoDoDashboard | number | null) =>
+    request<ResultsVsGtoData>(`/player/results-vs-gto${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
-  leakFinder: (lastN?: number) =>
-    request<LeakFinderData>(`/player/leak-finder${lastN != null ? `?last_n=${lastN}` : ""}`),
+  leakFinder: (escopo?: EscopoDoDashboard | number | null) =>
+    request<LeakFinderData>(`/player/leak-finder${escopo != null ? `?${queryDoEscopo(escopo)}` : ""}`),
 
-  dna: (days = 90, lastN?: number) =>
-    request<PlayerDnaResponse>(`/player/dna?days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  dna: (days = 90, escopo?: EscopoDoDashboard | number | null) =>
+    request<PlayerDnaResponse>(`/player/dna?days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
-  leakGraph: (days = 90, lang = "pt-BR", lastN?: number) =>
-    request<LeakGraphResponse>(`/player/leak-graph?days=${days}&lang=${encodeURIComponent(lang)}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  leakGraph: (days = 90, lang = "pt-BR", escopo?: EscopoDoDashboard | number | null) =>
+    request<LeakGraphResponse>(`/player/leak-graph?days=${days}&lang=${encodeURIComponent(lang)}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
-  career: (lang = "pt-BR", lastN?: number) =>
-    request<CareerProjection>(`/player/career?lang=${encodeURIComponent(lang)}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  career: (lang = "pt-BR", escopo?: EscopoDoDashboard | number | null) =>
+    request<CareerProjection>(`/player/career?lang=${encodeURIComponent(lang)}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
-  cognitiveFailures: (lang = "pt-BR", days = 90, lastN?: number) =>
-    request<CognitiveFailureData>(`/player/cognitive-failures?lang=${encodeURIComponent(lang)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  cognitiveFailures: (lang = "pt-BR", days = 90, escopo?: EscopoDoDashboard | number | null) =>
+    request<CognitiveFailureData>(`/player/cognitive-failures?lang=${encodeURIComponent(lang)}&days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
   sessionContext: () =>
     request<SessionContextData>(`/player/session-context`),
 
-  strategicTwin: (lang = "pt-BR", days = 180, lastN?: number) =>
-    request<StrategicTwinProfile>(`/player/strategic-twin?lang=${encodeURIComponent(lang)}&days=${days}${lastN != null ? `&last_n=${lastN}` : ""}`),
+  strategicTwin: (lang = "pt-BR", days = 180, escopo?: EscopoDoDashboard | number | null) =>
+    request<StrategicTwinProfile>(`/player/strategic-twin?lang=${encodeURIComponent(lang)}&days=${days}${escopo != null ? `&${queryDoEscopo(escopo)}` : ""}`),
 
 
 

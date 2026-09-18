@@ -10,6 +10,9 @@ import { PlayerStatsCard } from "@/components/hud/PlayerStatsCard";
 import { EvSummary, GtoQualityData, GtoPositionData, progression, metrics, type EvolutionResponse, type LeakHands } from "@/lib/api";
 import { useMasonryRows } from "@/hooks/useMasonryRows";
 import { formatAction } from "@/lib/utils";
+import { FiltroDeEscopo, fraseDoEscopo } from "@/components/hud/FiltroDeEscopo";
+import { ESCOPO_PADRAO } from "@/lib/escopoGuardado";
+import type { EscopoDoDashboard } from "@/lib/api";
 import { useSpotLabel } from "@/lib/spotLabel";
 import { SECTION_SPAN, DashSection } from "@/hooks/useDashboardLayout";
 import { V2EvTrendCard } from "@/components/hud/V2EvTrendCard";
@@ -40,8 +43,10 @@ interface Props {
       nunca renderizado desde que o V2 virou padrão. O dono nunca via o filtro. Renderizado
       aqui agora, no componente que de fato aparece na tela. 0 = histórico genuíno. */
   /** Opcional: a tela de Demo (dados fixos, sem refetch real) não precisa fornecer. */
-  volumeLimit?: number | null;
-  onVolumeLimitChange?: (v: number | null) => void;
+  /** O ESCOPO dos numeros da pagina: torneios, maos ou faixa de data. Substituiu o
+   *  `volumeLimit?: number` de 05/09, que so sabia contar torneios. */
+  escopo?: EscopoDoDashboard;
+  onEscopo?: (e: EscopoDoDashboard) => void;
   hasData: boolean;
   renderCard: (id: string, opts?: { v2?: boolean }) => React.ReactNode;
   gtoQuality?: GtoQualityData | null;
@@ -81,7 +86,7 @@ const CARD_ORDER = [
   "results", "dna", "twin", "pressure", "cognitive", "career", "causal_map",
 ];
 
-export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLimitChange = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileHidden = false, positionProfileGeral = null, positionGrouped = false, onPositionGrouped, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
+export function DashboardV2({ onUpload, evSummary, escopo = ESCOPO_PADRAO, onEscopo = () => {}, hasData, renderCard, gtoQuality = null, gtoPosition = null, positionProfile = null, positionProfileLocked = false, positionProfileHidden = false, positionProfileGeral = null, positionGrouped = false, onPositionGrouped, positionLastN = null, pendingGto = 0, aiInsights = [], aiLocked = false, showEmpty = false, evolution, kpis, playerStats = null, drift = null, onDismissDrift }: Props) {
   const { t } = useTranslation("dashboard");
   // Masonry real (mesmo hook do dashboard clássico): cards curtos liberam o vão
   // vertical e o grid-flow-dense empacota — sem blocos vazios na grade.
@@ -143,10 +148,8 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
             className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2
                        rounded-lg border border-primary/25 bg-primary/[0.06] px-4 py-2.5"
           >
-            <p className="text-[13px] leading-snug text-foreground">
-              {volumeLimit
-                ? t("volumeFilter.scopeLastN", { n: volumeLimit })
-                : t("volumeFilter.scopeAll", { tourneys: (kpis?.totalEvents ?? 0).toLocaleString() })}
+            <p className="text-[13px] leading-snug text-foreground" data-testid="escopo-em-palavras">
+              {fraseDoEscopo(escopo, t, kpis?.totalEvents ?? 0)}
               {!!kpis?.totalHands && (
                 <span className="text-muted-foreground">
                   {" · "}
@@ -154,33 +157,11 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
                 </span>
               )}
             </p>
-            <div
-              role="group"
-              aria-label={t("volumeFilter.label")}
-              className="flex items-center gap-px overflow-hidden rounded-md bg-background/50 ring-1 ring-border"
-            >
-              {([20, 50, 100, 0] as number[]).map((val) => {
-                const label = val === 0 ? t("volumeFilter.all")
-                  : val === 20 ? t("volumeFilter.last20")
-                  : val === 50 ? t("volumeFilter.last50")
-                  : t("volumeFilter.last100");
-                const ativo = volumeLimit === val;
-                return (
-                  <button
-                    key={val}
-                    onClick={() => onVolumeLimitChange(val)}
-                    aria-pressed={ativo}
-                    className={`px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${
-                      ativo
-                        ? "bg-primary text-primary-foreground font-bold"
-                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+            {/* ── O controle virou um ICONE (17/09) ──────────────────────────────────────
+                Eram quatro botoes (20, 50, 100, historico), e tres dimensoes nao cabem em
+                botoes: viraria uma fileira de doze. O icone devolve a largura para a FRASE,
+                que e quem diz o escopo. */}
+            <FiltroDeEscopo escopo={escopo} onEscopo={onEscopo} />
           </div>
         )}
 
@@ -387,7 +368,7 @@ export function DashboardV2({ onUpload, evSummary, volumeLimit = 50, onVolumeLim
                     </div>
                   </button>
                   {aberto && (
-                    <MaosDoLeak street={l.street} actionTaken={l.action_taken} bestAction={l.best_action} lastN={volumeLimit} />
+                    <MaosDoLeak street={l.street} actionTaken={l.action_taken} bestAction={l.best_action} escopo={escopo} />
                   )}
                 </div>
               );})}

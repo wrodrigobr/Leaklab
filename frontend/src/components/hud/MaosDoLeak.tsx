@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { metrics, type LeakHands } from "@/lib/api";
+import { metrics, type EscopoDoDashboard, type LeakHands } from "@/lib/api";
 import { HeroHand } from "@/components/PlayingCard";
 import { chaveDoLeak, hrefDaMao } from "@/lib/playlistDoLeak";
 
@@ -26,8 +26,10 @@ import { chaveDoLeak, hrefDaMao } from "@/lib/playlistDoLeak";
  * (`test_maos_do_leak`), que semeia multiway e zona de ICM e exige a reconciliacao linha a linha.
  * Deteccao de defeito nosso vive na suite, nao na vitrine.
  */
-export function MaosDoLeak({ street, actionTaken, bestAction, lastN }: {
-  street: string; actionTaken: string; bestAction: string; lastN?: number | null;
+export function MaosDoLeak({ street, actionTaken, bestAction, escopo }: {
+  /** O MESMO escopo do dashboard: este card mostra as maos do leak, e elas tem de sair do
+   *  recorte que a faixa verde declara. Era `lastN?: number`, que so sabia contar torneios. */
+  street: string; actionTaken: string; bestAction: string; escopo?: EscopoDoDashboard | number | null;
 }) {
   const { t } = useTranslation("dashboard");
   const navigate = useNavigate();
@@ -36,11 +38,11 @@ export function MaosDoLeak({ street, actionTaken, bestAction, lastN }: {
   useEffect(() => {
     let vivo = true;
     setDados(null); setErro(false);
-    metrics.evLeakHands(street, actionTaken, bestAction, lastN ?? undefined, 200)
+    metrics.evLeakHands(street, actionTaken, bestAction, escopo, 200)
       .then((d) => { if (vivo) setDados(d); })
       .catch(() => { if (vivo) setErro(true); });
     return () => { vivo = false; };
-  }, [street, actionTaken, bestAction, lastN]);
+  }, [street, actionTaken, bestAction, escopo]);
 
   if (erro) return <p className="mt-2 px-1 text-[11px] text-muted-foreground">{t("v2.leakHandsError")}</p>;
   if (!dados) return <p className="mt-2 px-1 font-mono text-[10px] text-muted-foreground/60">…</p>;
@@ -91,7 +93,8 @@ export function MaosDoLeak({ street, actionTaken, bestAction, lastN }: {
                         mao: m.hand_id,
                         tournamentId: String(m.tournament_id),
                         leakParam: chaveDoLeak({ street, action_taken: actionTaken, best_action: bestAction }),
-                        leakLastN: lastN,
+                        leakLastN: typeof escopo === "number" ? escopo
+                          : escopo?.tipo === "torneios" ? escopo.n : undefined,
                       }))}
                     className="rounded border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                   >

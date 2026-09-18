@@ -5,6 +5,121 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O filtro do dashboard virou ESCOPO, com tres dimensoes (18/09)
+
+O dono: "pensei em ao inves dos botoes dos ultimos torneios, podiamos criar um icone de filtro, e
+abrir um popup para o jogador escolher como quer filtrar 'ultimos torneios, ultimas x maos (com
+limite de 30 mil maos), por data de inicio e fim (com limite de x meses)'...e ao selecionar, ai
+ficaria exposto neste bloco verde a opcao do filtro do usuario...e devemos manter sessao, sempre
+usar a ultima escolha dele". E depois, sobre o risco: "Garanta que o Dashboard vai ser atualizado
+com estes filtros".
+
+### O desenho saiu de uma MEDICAO, e nao de gosto
+
+`last_n` aparece 295 vezes no projeto (109 no repositorio, 54 na app, 132 em 13 arquivos de teste)
+e ainda e o nome do parametro HTTP. Das 29 linhas que mexem com ele, 24 apenas o REPASSAM para
+`_build_tournament_filter` -- entao alargar o TIPO daquela funcao alcanca os 38 chamadores sem
+tocar em nenhum, enquanto um parametro novo custaria 63 lugares e renomear tudo custaria 295.
+
+O preco e um nome que fica curto (`last_n` carregando um escopo), e quem paga o preco e a varredura
+por INTROSPECCAO: ela descobre toda funcao do repositorio que recebe `last_n` e chama cada uma com
+um escopo de dict, exigindo que nenhuma quebre. Hoje sao **38 funcoes, zero puladas**.
+
+No cliente o mesmo padrao: o fragmento `last_n=${...}` estava escrito A MAO 24 vezes nas 23 funcoes
+de `metrics`. Virou uma escrita so (`queryDoEscopo` / `comEscopo`).
+
+### As tres dimensoes
+
+- **torneios**: como era. `0` segue sendo HISTORICO genuino, e nao "sem filtro".
+- **maos**: pega torneios por data decrescente enquanto o acumulado ANTES do torneio nao alcancou
+  X. O que CRUZA o teto entra inteiro -- cortar mao no meio de um torneio quebraria a soma por
+  torneio que toda tela faz. Teto de 30 mil.
+- **periodo**: `played_at BETWEEN`, inclusivo nos dois dias. O eixo e o de JOGO, que e a cicatriz do
+  lote do Rullian (280 torneios de 3 meses com `imported_at` espremido em 25 horas).
+
+O teto e em MAOS porque e nelas que o custo cresce: seis meses de um grinder pesam mais que dois
+anos de um recreativo. O de 12 meses e so para o seletor nao oferecer 2019 a quem comecou este ano,
+e ele apara a data em vez de recusar -- recusar obrigaria a tela a saber a regra do servidor.
+
+### A GARANTIA, em quatro camadas
+
+O risco que o dono nomeou: se UM card ficar de fora, a tela mostra numeros de escopos diferentes
+sob uma faixa que declara um so, e o jogador nao tem como saber.
+
+1. **Tipo**: funcao que recebe escopo nao compila ignorando o tipo.
+2. **Varredura de fonte**: nenhuma funcao monta a query a mao, e toda funcao que recebe o escopo
+   usa o montador. A excecao (o relatorio do Pratica, outro contrato) e nominal, e o corpo do
+   proprio montador sai da varredura por RECORTE, e nao por lista de linhas a ignorar.
+3. **Varredura de comportamento**: chama as funcoes de `metrics` com um escopo e confere a URL que
+   saiu no `fetch`. A lista sai da DECLARACAO, entao funcao nova entra sozinha.
+4. **Varredura do servidor**: as 38 funcoes do repositorio chamadas com escopo de dict.
+
+### Tres defeitos reais que as varreduras acharam
+
+- **O construtor era chamado por palavra-chave** em dois lugares (`_build_tournament_filter(user_id,
+  last_n=...)`). O rename do parametro quebraria ate o caminho LEGADO, o `last_n=0` de historico.
+- **O `/player/ev-summary` lia `last_n` direto da query**, sem o helper: as duas dimensoes novas
+  nao chegariam naquele card, e o jogador escolheria "ultimas 5.000 maos" com o EV preso nos 50
+  torneios do default, sem nada na tela dizendo. Ha guarda novo contando quantos lugares leem o
+  parametro da query, e exigindo exatamente UM.
+- **Havia DOIS controles de escopo** no `Index`: o do dashboard legado e o da faixa verde do V2.
+  Com tres dimensoes, dois controles seriam duas verdades.
+
+E o `tsc` pegou outros dois cards que eu tinha deixado para tras (o `MaosDoLeak` e o tipo da lista
+de torneios).
+
+### A persistencia
+
+Por USUARIO, em `localStorage`. `sessionStorage` morreria com a aba, e "sempre usar a ultima
+escolha" atravessa o fechar do navegador. Por usuario porque dois jogadores na mesma maquina
+herdariam o filtro um do outro, e o escopo decide o NUMERO que a tela mostra -- preferencia de tela
+pode vazar, escopo de dado nao.
+
+Lixo no storage vira o padrao, faixa invertida e corrigida em vez de descartada, e storage bloqueado
+nao derruba a tela.
+
+### O que o TIPO achou, e nenhuma varredura acharia
+
+As quatro camadas acima olham a FUNCAO e a FONTE. Tres defeitos estavam no CHAMADOR, e quem os
+pegou foi o compilador, quando o escopo deixou de ser um `number` intercambiavel com `days`:
+
+- **`cognitiveFailures` e `strategicTwin`** recebem `(lang, days, escopo)` e o `Index` chamava com
+  DOIS argumentos: o filtro caia em `days`. Os cards "Padroes Cognitivos" e "Tendencias
+  Estrategicas" NUNCA respeitaram o filtro -- com "ultimos 50 torneios" eles consultavam 50 DIAS, e
+  com "Historico" (`0`), `days=0`. Estava assim em producao, sob uma faixa verde que declarava
+  outro escopo.
+- **O perfil por posicao** (`positionLastN`) e a **lista de maos do leak** (`MaosDoLeak`) tinham a
+  prop tipada como `number` e ficavam de fora das duas dimensoes novas.
+
+Enquanto `days` e `lastN` eram os dois `number`, a chamada era valida -- so significava outra
+coisa. Dois parametros posicionais do mesmo tipo primitivo sao um convite ao erro que nenhum teste
+da funcao acusa.
+
+### O lugar errado das constantes
+
+O tipo e os dois tetos nasceram dentro do `api.ts`, e isso quebrou o `Index.onboarding.test.tsx`,
+que substitui o modulo inteiro da API por um dublê: as funcoes o dublê resolve, as CONSTANTES nao.
+O erro era de lugar. Constante e tipo nao sao chamada de rede, e po-los no modulo de rede obriga
+todo dublê da API a conhece-los. Passaram para `lib/escopo.ts`, com reexport no `api.ts` para os
+imports existentes.
+
+### As duas datas tinham limites IGUAIS
+
+O dono, na tela: "as datas do filtro 'de' e 'ate' estao invertidas....o 'de' tem que permitir
+selecionar o passado....o ate, no maximo o dia de hoje".
+
+A causa foi um atalho: eu gerava os dois campos num `map`, e o laco os fazia identicos (piso e hoje
+nos dois). As duas pontas de uma faixa nao sao simetricas -- o comeco e limitado pelo FIM, e o fim
+por hoje. Com limites iguais dava para escolher `de` depois do `ate`, e a faixa invertida so era
+corrigida depois, no validador, calada. Agora o seletor nao OFERECE a inversao.
+
+### E a licao do foco, aplicada antes de virar defeito
+
+O `Opcao` do popup nasceu declarado DENTRO do componente -- o mesmo defeito que o dono relatou hoje
+no formulario de resultado manual. Movido para fora, com teste de foco no campo de data.
+
+---
+
 ## O formulario perdia o FOCO a cada tecla, e ganhou o campo de entradas (17/09)
 
 O dono mandou os dados dos sete ultimos torneios dele no PartyPoker para eu preencher, e o exercicio

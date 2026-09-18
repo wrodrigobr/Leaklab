@@ -261,7 +261,21 @@
     "all": "History",
     "scopeLastN": "These numbers come from your last {{n}} tournaments",
     "scopeAll": "These numbers come from your full history, {{tourneys}} tournaments",
-    "sample": "{{hands}} hands"
+    "sample": "{{hands}} hands",
+    "titulo": "data scope",
+    "ajuda": "Choose where the numbers on this page come from. Your choice is remembered.",
+    "ajustar": "filter",
+    "fechar": "close",
+    "aplicar": "apply",
+    "de": "from",
+    "ate": "to",
+    "aba": {
+      "torneios": "tournaments",
+      "maos": "hands",
+      "periodo": "date range"
+    },
+    "scopeMaos": "These numbers are from your last {{maos}} hands",
+    "scopePeriodo": "These numbers are from tournaments played between {{de}} and {{ate}}"
   },
   "form": {
     "title": "Recent Form",
