@@ -23,6 +23,7 @@ import logging
 import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from email.mime.text import MIMEText
 from typing import Optional
 
@@ -263,13 +264,29 @@ def html_para_texto(html: str) -> str:
     return '\n'.join(l.strip() for l in t.splitlines()).strip()
 
 
+#: O nome que aparece na caixa de entrada. Sem ele o cliente mostra a parte local do endereço --
+#: o dono fotografou a lista chegando como "noreply" (18/09).
+NOME_DO_REMETENTE = os.environ.get("MAIL_FROM_NAME", "GrindLab")
+
+
 def _montar_mensagem(subject: str, from_addr: str, to_email: str, html_body: str):
     """Monta a mensagem com AS DUAS partes. Existe como função única porque a montagem
     vive em dois pontos (digest e transacional) — e era exatamente a divergência entre
-    eles que a regra 5 manda evitar: consertar num e esquecer o outro."""
+    eles que a regra 5 manda evitar: consertar num e esquecer o outro.
+
+    ── O nome do remetente (18/09) ───────────────────────────────────────────────────────────
+
+    O `From` recebia o endereço CRU (`noreply@grindlabpoker.com`), e cliente de e-mail sem nome
+    de exibição mostra a parte local: a lista chegava assinada por "noreply". O dono fotografou.
+
+    `formataddr` é o que monta `GrindLab <noreply@...>` com a codificação certa quando o nome tem
+    acento. E ele vale SÓ para o cabeçalho: o remetente de ENVELOPE, que vai no `sendmail`, tem de
+    seguir sendo o endereço puro -- servidor de SMTP recusa envelope com nome, e a mensagem
+    inteira falharia em vez de chegar com o nome errado.
+    """
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = from_addr
+    msg["From"] = formataddr((NOME_DO_REMETENTE, from_addr))
     msg["To"] = to_email
     # Ordem importa: em multipart/alternative o cliente exibe a ÚLTIMA parte que sabe ler,
     # então o texto vai primeiro e o HTML depois.

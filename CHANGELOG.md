@@ -5,6 +5,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O e-mail chegava assinado por "noreply" (18/09)
+
+O dono fotografou a caixa de entrada: a mensagem chegava com o remetente **noreply**, e nao com a
+marca.
+
+O `From` recebia o endereco CRU (`noreply@grindlabpoker.com`). Cliente de e-mail sem nome de
+exibicao mostra a parte local do endereco, e foi isso que apareceu na lista dele. Agora o cabecalho
+sai como `GrindLab <noreply@...>`, montado com `formataddr`, que tambem resolve a codificacao
+quando o nome tem acento.
+
+### A metade invisivel, que era o risco de verdade
+
+O mesmo `from_addr` vai ao `sendmail` como remetente de ENVELOPE, e servidor de SMTP **recusa**
+envelope com nome de exibicao. Trocar a variavel em vez do cabecalho faria o e-mail deixar de
+CHEGAR -- regra 7 da casa: o conserto causando um dano que o defeito nao causava. "Nome errado" e
+muito melhor que "nao chega".
+
+O guarda cobra as duas metades, e a segunda com o `sendmail` dublado: um teste que olhasse so o
+cabecalho passaria verde com o envio quebrado. Quebrando cada metade de proposito, cada uma acusa.
+
+O nome sai de `MAIL_FROM_NAME` e cai na marca quando ninguem configura, entao nao ha nada a mexer
+no `.env` do host.
+
+### Fica anotado, e nao foi feito
+
+O endereco segue sendo `noreply@`. O nome de exibicao resolve o que ele fotografou, mas quem
+responder ao e-mail escreve para um buraco. Um `Reply-To` apontando para o suporte resolveria, e e
+decisao do dono.
+
+---
+
 ## O filtro do dashboard virou ESCOPO, com tres dimensoes (18/09)
 
 O dono: "pensei em ao inves dos botoes dos ultimos torneios, podiamos criar um icone de filtro, e

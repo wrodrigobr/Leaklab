@@ -202,7 +202,7 @@ SUITES = {
     'api':       ['test_api_endpoints.py', 'test_teto_de_jam_so_postflop.py', 'test_subscription.py', 'test_partygaming_financials.py',
                   'test_stripe_hardening.py', 'test_worker_entrypoints.py',
                   'test_decisao_exemplo.py', 'test_dashboard_demo.py',
-                  'test_email_confirmacao.py', 'test_enqueue_pot_unit.py',
+                  'test_email_confirmacao.py', 'test_nome_do_remetente.py', 'test_enqueue_pot_unit.py',
                   'test_villain_reveals_hud.py', 'test_equity_real_vs_mostrada.py',
                   'test_no_da_linha_pot_type.py', 'test_leaktrainer_3bet_pot.py',
                   'test_catalogo_de_treinos.py', 'test_mao_da_arvore.py',
