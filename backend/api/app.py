@@ -1425,6 +1425,12 @@ def tournament_results_manual(tournament_id):
         prize = numero('prize', minimo=0)
         buy_in = numero('buy_in', minimo=0)
         field_size = numero('field_size', minimo=1, obrigatorio=False)
+        # ENTRADAS, e nao re-entradas: o jogador conta "joguei duas vezes", nao "re-entrei uma".
+        # Sem este campo, quem re-entrava nao conseguia registrar o custo real -- e o caminho do
+        # ARQUIVO registra. Achado quando o dono mandou os dados de sete torneios dele e um tinha
+        # re-entrada: o lucro so fechava se o buy-in digitado ja fosse o total, e ai a etiqueta do
+        # torneio ficava errada e o `re_entries` nao existia.
+        entradas = numero('entradas', minimo=1, obrigatorio=False) or 1
     except ValueError as e:
         # Mensagem tratada, e nao codigo de erro: "nao podemos retornar codigo de erro para o
         # usuario, temos que ter o erro tratado" (o dono, 16/09).
@@ -1433,18 +1439,29 @@ def tournament_results_manual(tournament_id):
     if field_size and place > field_size:
         return jsonify({'error': 'A colocacao nao pode ser maior que o numero de jogadores.'}), 422
 
+    # O custo REAL e o buy-in de UMA entrada vezes o total de entradas, e e ele que vai para a
+    # coluna `buy_in`. Nao e escolha minha: e a convencao que o caminho do arquivo ja usa, escrita
+    # lá ("Sem coluna de 'total investido', grava esse total no buy_in -> profit e ROI ficam
+    # certos"). Divergir aqui faria o mesmo torneio ter custo diferente conforme a fonte.
+    entradas = int(entradas)
+    custo = round(buy_in * entradas, 2)
+    profit = round(prize - custo, 2)
+
     ok = update_tournament_financials(
         g.user_id, str(tournament_id),
-        buy_in=buy_in, prize=prize, profit=round(prize - buy_in, 2),
+        buy_in=custo, prize=prize, profit=profit,
         place=int(place), field_size=int(field_size) if field_size else None,
+        re_entries=entradas - 1,
         origem='manual')
     if not ok:
         return jsonify({'error': 'Torneio nao encontrado'}), 404
 
     return jsonify({
         'tournament_id': str(tournament_id),
-        'place': int(place), 'prize': prize, 'buy_in': buy_in,
-        'profit': round(prize - buy_in, 2),
+        # `buy_in` de volta e o CUSTO, para a tela mostrar o mesmo numero que o ROI usa
+        'place': int(place), 'prize': prize, 'buy_in': custo,
+        'profit': profit,
+        'entradas': entradas, 're_entries': entradas - 1,
         'field_size': int(field_size) if field_size else None,
         'financeiro_origem': 'manual',
     }), 200

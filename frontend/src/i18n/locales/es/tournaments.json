@@ -345,6 +345,8 @@
     "jogadores": "jugadores",
     "buyIn": "buy-in ($)",
     "premio": "premio ($)",
+    "entradas": "entradas",
+    "custoTotal": "costo total",
     "lucro": "ganancia",
     "salvar": "guardar resultado",
     "avisoOrigem": "esta sala no publica el resumen del torneo, entonces estos numeros quedan marcados como completados por vos. Entran en tu ROI y en tu bankroll.",
@@ -354,6 +356,7 @@
     "erroColocacaoMaior": "El puesto no puede ser mayor que el numero de jugadores.",
     "erroSalvar": "No pudimos guardarlo ahora. Intenta de nuevo en unos instantes.",
     "preencher": "completar",
-    "digitado": "completado por vos"
+    "digitado": "completado por vos",
+    "erroEntradas": "Las entradas deben ser 1 o mas."
   }
 }

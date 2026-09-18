@@ -5,6 +5,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O formulario perdia o FOCO a cada tecla, e ganhou o campo de entradas (17/09)
+
+O dono mandou os dados dos sete ultimos torneios dele no PartyPoker para eu preencher, e o exercicio
+achou duas coisas.
+
+### O foco: oito testes verdes com o formulario inutilizavel
+
+"o formulario está estranho também...a cada digitação, ele perde o foco".
+
+A causa e de React e nao de CSS. O `Campo` era declarado DENTRO de `ResultadoManual`, entao tinha
+IDENTIDADE nova em cada render. O React compara tipos por identidade, ve um componente diferente, e
+em vez de atualizar o `input` DESMONTA a arvore e monta outra -- o elemento com o cursor deixa de
+existir a cada tecla.
+
+O arquivo tinha OITO casos de teste e nenhum pegou, porque `fireEvent.change` escreve no estado e le
+o valor de volta, e isso continua funcionando com a arvore remontando. Teste verde, tela
+inutilizavel. O caso novo foca o campo, digita quatro vezes e exige que o MESMO elemento siga em
+`document.activeElement` com `isConnected`. Quebrado de proposito (o `Campo` de volta para dentro),
+ele acusa na primeira tecla.
+
+### As entradas: o caminho do arquivo registrava, o digitado nao
+
+Um dos sete torneios dele tinha uma re-entrada, e ai o formulario nao dava conta: o lucro so fechava
+se o buy-in digitado JA fosse o total (2,20 num torneio de 1,10), e o `re_entries` nao era
+registrado -- enquanto o caminho do ARQUIVO registra os dois.
+
+Agora ha o campo ENTRADAS (e nao "re-entradas": o jogador conta "joguei duas vezes"). Ele digita o
+buy-in da etiqueta e o numero de entradas, e o servidor calcula o custo, o lucro e o `re_entries`. A
+convencao e a MESMA do caminho do arquivo, escrita lá: o custo total vai para a coluna `buy_in`,
+porque nao ha coluna de "total investido" e e dela que o ROI soma. Divergir faria o mesmo torneio ter
+custo diferente conforme a fonte.
+
+Dois casos de borda tratados porque quebram calado:
+
+- **Reabrir** um torneio com re-entrada divide o custo guardado pelas entradas e mostra 1,10 na
+  etiqueta. Sem isso ele mostraria 2,20, e salvar de novo dobraria para 4,40.
+- **Entradas zero** e recusada com frase, e nao aceita como 1: quem digita 0 errou, e o silencio
+  transformaria o erro num numero plausivel.
+
+A linha de "custo total" aparece SO quando ha mais de uma entrada -- sempre visivel, ela seria ruido
+na maioria dos torneios. Ha controle disso nos dois lados.
+
+Front 782/782 em 107 arquivos, tsc limpo. Backend: `test_resultado_manual` 10/10 e
+`test_api_endpoints` 50/50.
+
+---
+
 ## O card de veredito: o defeito era SEMANTICO, nao de tamanho (17/09)
 
 O dono: "o veredito ainda nao esta premium....use o claude design para avaliar isto e propor

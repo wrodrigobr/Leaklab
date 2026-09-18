@@ -71,6 +71,78 @@ describe("o formulario de resultado manual", () => {
     expect(screen.queryByTestId("resultado-manual")).toBeNull();
   });
 
+  it("o campo NAO perde o foco a cada tecla", () => {
+    // 17/09, o dono: "o formulario está estranho também...a cada digitação, ele perde o foco".
+    //
+    // A causa era de React: o `Campo` era declarado DENTRO de `ResultadoManual`, entao ele tinha
+    // identidade nova em cada render. O React compara tipos por identidade, via um componente
+    // diferente, e em vez de atualizar o `input` DESMONTAVA a arvore e montava outra -- o elemento
+    // com o cursor deixava de existir a cada tecla.
+    //
+    // Os oito casos que existiam aqui nao pegaram isso porque `fireEvent.change` nao olha o foco:
+    // o valor chegava certo no estado e o teste passava verde com o formulario inutilizavel. Este
+    // ancora no que o jogador sente.
+    render(<ResultadoManual torneio={torneio()} onFechar={() => {}} onSalvo={() => {}} />);
+    const alvo = screen.getByTestId("manual-prize") as HTMLInputElement;
+    alvo.focus();
+    expect(document.activeElement).toBe(alvo);
+
+    for (const v of ["1", "12", "12.", "12.4"]) {
+      fireEvent.change(screen.getByTestId("manual-prize"), { target: { value: v } });
+      // o MESMO elemento continua no DOM e com o foco: se a arvore remontar, o `alvo` sai do
+      // documento e o `activeElement` volta para o body
+      expect(alvo.isConnected, `o input foi remontado ao digitar "${v}"`).toBe(true);
+      expect(document.activeElement, `o foco saiu ao digitar "${v}"`).toBe(alvo);
+    }
+    expect((screen.getByTestId("manual-prize") as HTMLInputElement).value).toBe("12.4");
+  });
+
+  it("as ENTRADAS entram no custo, e o buy-in segue sendo o da etiqueta", () => {
+    // Achado com os dados reais do dono (sete torneios, um com re-entrada): o lucro so fechava se
+    // o buy-in digitado ja fosse o total, e ai a etiqueta do torneio ficava errada e o `re_entries`
+    // nao era registrado -- enquanto o caminho do ARQUIVO registra os dois.
+    const onSalvo = vi.fn();
+    render(<ResultadoManual torneio={torneio()} onFechar={() => {}} onSalvo={onSalvo} />);
+    fireEvent.change(screen.getByTestId("manual-place"), { target: { value: "22" } });
+    fireEvent.change(screen.getByTestId("manual-field"), { target: { value: "94" } });
+    fireEvent.change(screen.getByTestId("manual-buyin"), { target: { value: "1.10" } });
+    fireEvent.change(screen.getByTestId("manual-prize"), { target: { value: "2.08" } });
+    fireEvent.change(screen.getByTestId("manual-entradas"), { target: { value: "2" } });
+
+    // o custo aparece SO quando ha mais de uma entrada, e o lucro passa por ele
+    expect(screen.getByTestId("manual-custo").textContent).toBe("$2.20");
+    expect(screen.getByTestId("manual-lucro").textContent).toBe("$0.12");
+
+    fireEvent.click(screen.getByTestId("resultado-manual-salvar"));
+    // o corpo leva o buy-in de UMA entrada e o numero de entradas: o custo e conta do servidor
+    expect(resultadoManual).toHaveBeenCalledWith("PARTY-13165152578",
+      { place: 22, prize: 2.08, buy_in: 1.1, field_size: 94, entradas: 2 });
+  });
+
+  it("CONTROLE: com UMA entrada o custo nem aparece", () => {
+    // Sem este, um campo de custo sempre visivel passaria no caso acima, e a tela ganharia uma
+    // linha de ruido em todo torneio sem re-entrada (a maioria).
+    render(<ResultadoManual torneio={torneio()} onFechar={() => {}} onSalvo={() => {}} />);
+    fireEvent.change(screen.getByTestId("manual-buyin"), { target: { value: "1.10" } });
+    fireEvent.change(screen.getByTestId("manual-prize"), { target: { value: "6.16" } });
+    expect((screen.getByTestId("manual-entradas") as HTMLInputElement).value,
+           "o padrao de entradas tem de ser 1").toBe("1");
+    expect(screen.queryByTestId("manual-custo")).toBeNull();
+    expect(screen.getByTestId("manual-lucro").textContent).toBe("+$5.06");
+  });
+
+  it("reabrir um torneio com re-entrada mostra o buy-in da ETIQUETA, e nao o custo", () => {
+    // O `buy_in` guardado e o custo total (convencao do caminho do arquivo). Sem dividir pelas
+    // entradas ao reabrir, o formulario mostraria 2,20 como etiqueta de um torneio de 1,10 -- e
+    // salvar de novo DOBRARIA o custo, para 4,40.
+    render(<ResultadoManual torneio={torneio({ buy_in: 2.2, re_entries: 1, prize: 2.08, place: 22 })}
+                            onFechar={() => {}} onSalvo={() => {}} />);
+    expect((screen.getByTestId("manual-entradas") as HTMLInputElement).value).toBe("2");
+    expect((screen.getByTestId("manual-buyin") as HTMLInputElement).value,
+           "o formulario mostrou o custo total no lugar da etiqueta").toBe("1.1");
+    expect(screen.getByTestId("manual-custo").textContent).toBe("$2.20");
+  });
+
   it("o lucro e CALCULADO enquanto ele digita", () => {
     render(<ResultadoManual torneio={torneio()} onFechar={() => {}} onSalvo={() => {}} />);
     expect(screen.getByTestId("manual-lucro").textContent).toBe("—");
@@ -103,9 +175,10 @@ describe("o formulario de resultado manual", () => {
     fireEvent.click(screen.getByTestId("resultado-manual-salvar"));
 
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
-    // o corpo NAO leva lucro: quem calcula e o servidor
+    // o corpo NAO leva lucro: quem calcula e o servidor. `entradas: 1` vai sempre, para o
+    // servidor nunca ter de adivinhar o padrao.
     expect(resultadoManual).toHaveBeenCalledWith("PARTY-13165152578",
-      { place: 6, prize: 12.4, buy_in: 5.5, field_size: 180 });
+      { place: 6, prize: 12.4, buy_in: 5.5, field_size: 180, entradas: 1 });
     expect(onSalvo.mock.calls[0][0]).toEqual({ place: 6, prize: 12.4, buy_in: 5.5, profit: 6.9 });
     expect(onFechar).toHaveBeenCalled();
   });

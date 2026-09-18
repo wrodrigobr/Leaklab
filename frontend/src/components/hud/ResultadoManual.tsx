@@ -19,6 +19,40 @@ import { tournaments as tournamentsApi, type Tournament } from "@/lib/api";
  * fechar entre si, e ninguém saberia qual deles o ROI usou. A tela mostra a conta enquanto ele
  * digita, para o número não ser surpresa depois de salvar.
  */
+/**
+ * Um campo do formulário.
+ *
+ * ── Por que ele vive AQUI, e não dentro do componente (17/09) ─────────────────────────────────
+ *
+ * Ele era declarado dentro de `ResultadoManual`, e o dono relatou: "o formulario está estranho
+ * também...a cada digitação, ele perde o foco".
+ *
+ * A causa é de React e não de CSS: uma função de componente declarada no corpo de outro componente
+ * tem IDENTIDADE NOVA em cada render. O React compara os tipos por identidade, vê um componente
+ * diferente, e em vez de atualizar o `input` ele DESMONTA a árvore e monta outra. O elemento com o
+ * cursor deixa de existir a cada tecla.
+ *
+ * Declarado fora, a identidade é estável e o `input` é o mesmo elemento entre renders.
+ *
+ * O formulário tinha oito casos de teste e nenhum pegou isto, porque `fireEvent.change` não olha
+ * o foco: o valor chegava certo no estado e o teste passava. Há um caso novo que digita e confere
+ * `document.activeElement`.
+ */
+function Campo({ rotulo, valor, onChange, dica, testid }: {
+  rotulo: string; valor: string; onChange: (v: string) => void; dica?: string; testid: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block font-mono text-[9.5px] uppercase tracking-widest-2 text-muted-foreground">
+        {rotulo}
+      </span>
+      <input value={valor} onChange={(e) => onChange(e.target.value)} data-testid={testid}
+             inputMode="decimal" placeholder={dica}
+             className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-sm tabular-nums text-foreground outline-none transition-colors focus:border-primary" />
+    </label>
+  );
+}
+
 export function ResultadoManual({ torneio, onFechar, onSalvo }: {
   torneio: Tournament | null;
   onFechar: () => void;
@@ -29,6 +63,8 @@ export function ResultadoManual({ torneio, onFechar, onSalvo }: {
   const [prize, setPrize] = useState("");
   const [buyIn, setBuyIn] = useState("");
   const [campo, setCampo] = useState("");
+  /** quantas vezes ele entrou no torneio: 1 = sem re-entrada. NUNCA zero. */
+  const [entradas, setEntradas] = useState("1");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -38,7 +74,12 @@ export function ResultadoManual({ torneio, onFechar, onSalvo }: {
     if (!torneio) return;
     setPlace(torneio.place != null ? String(torneio.place) : "");
     setPrize(torneio.prize != null ? String(torneio.prize) : "");
-    setBuyIn(torneio.buy_in != null ? String(torneio.buy_in) : "");
+    // O `buy_in` GUARDADO e o custo total (buy-in de uma entrada x entradas), que e a convencao
+    // do caminho do arquivo. Ao reabrir, ele volta DIVIDIDO pelas entradas, senao o formulario
+    // mostraria 2,20 como etiqueta de um torneio de 1,10 -- e salvar de novo dobraria o custo.
+    const ent = (torneio.re_entries ?? 0) + 1;
+    setEntradas(String(ent));
+    setBuyIn(torneio.buy_in != null ? String(Math.round((torneio.buy_in / ent) * 100) / 100) : "");
     setCampo(torneio.field_size != null ? String(torneio.field_size) : "");
     setErro(null);
   }, [torneio]);
@@ -56,8 +97,11 @@ export function ResultadoManual({ torneio, onFechar, onSalvo }: {
   };
   const p = num(prize);
   const b = num(buyIn);
+  const e = num(entradas);
+  /** o custo REAL: o buy-in de uma entrada vezes o total de entradas */
+  const custo = b != null ? Math.round(b * Math.max(1, e ?? 1) * 100) / 100 : null;
   // a mesma conta do servidor, só para ele VER antes de salvar
-  const lucro = p != null && b != null ? Math.round((p - b) * 100) / 100 : null;
+  const lucro = p != null && custo != null ? Math.round((p - custo) * 100) / 100 : null;
 
   const salvar = async () => {
     const pl = num(place);
@@ -66,12 +110,14 @@ export function ResultadoManual({ torneio, onFechar, onSalvo }: {
     if (b == null || b < 0) { setErro(t("manual.erroBuyIn")); return; }
     const c = campo.trim() ? num(campo) : null;
     if (c != null && pl > c) { setErro(t("manual.erroColocacaoMaior")); return; }
+    const ent = e == null ? 1 : Math.floor(e);
+    if (ent < 1) { setErro(t("manual.erroEntradas")); return; }
 
     setSalvando(true);
     setErro(null);
     try {
       const r = await tournamentsApi.resultadoManual(torneio.tournament_id, {
-        place: pl, prize: p, buy_in: b, field_size: c,
+        place: pl, prize: p, buy_in: b, field_size: c, entradas: ent,
       });
       onSalvo({ place: r.place, prize: r.prize, buy_in: r.buy_in, profit: r.profit });
       onFechar();
@@ -85,18 +131,6 @@ export function ResultadoManual({ torneio, onFechar, onSalvo }: {
     }
   };
 
-  const Campo = ({ rotulo, valor, onChange, dica, testid }: {
-    rotulo: string; valor: string; onChange: (v: string) => void; dica?: string; testid: string;
-  }) => (
-    <label className="block">
-      <span className="mb-1 block font-mono text-[9.5px] uppercase tracking-widest-2 text-muted-foreground">
-        {rotulo}
-      </span>
-      <input value={valor} onChange={(e) => onChange(e.target.value)} data-testid={testid}
-             inputMode="decimal" placeholder={dica}
-             className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-sm tabular-nums text-foreground outline-none transition-colors focus:border-primary" />
-    </label>
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4"
@@ -126,7 +160,20 @@ export function ResultadoManual({ torneio, onFechar, onSalvo }: {
                  dica="5.50" testid="manual-buyin" />
           <Campo rotulo={t("manual.premio")} valor={prize} onChange={setPrize}
                  dica="12.40" testid="manual-prize" />
+          {/* ENTRADAS, e nao re-entradas: ele conta "joguei duas vezes". Fica na mesma grade dos
+              outros, e o padrao e 1 -- a maioria dos torneios nao tem re-entrada, e um campo que
+              comeca vazio obrigaria todo mundo a preenche-lo. */}
+          <Campo rotulo={t("manual.entradas")} valor={entradas} onChange={setEntradas}
+                 dica="1" testid="manual-entradas" />
         </div>
+        {/* o CUSTO aparece quando ele entrou mais de uma vez: e o numero que o ROI usa, e sem
+            mostra-lo o jogador ve um lucro que nao fecha com o buy-in que ele digitou */}
+        {custo != null && (e ?? 1) > 1 && (
+          <div className="mt-2 flex items-baseline justify-between font-mono text-[9.5px] text-muted-foreground">
+            <span className="uppercase tracking-widest-2">{t("manual.custoTotal")}</span>
+            <span data-testid="manual-custo" className="tabular-nums">${custo.toFixed(2)}</span>
+          </div>
+        )}
 
         {/* O lucro é CALCULADO, e aparece aqui para não ser surpresa depois de salvar. */}
         <div className="mt-3 flex items-baseline justify-between rounded border border-border/60 bg-background/40 px-2.5 py-2">

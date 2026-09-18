@@ -345,6 +345,8 @@
     "jogadores": "jogadores",
     "buyIn": "buy-in ($)",
     "premio": "premio ($)",
+    "entradas": "entradas",
+    "custoTotal": "custo total",
     "lucro": "lucro",
     "salvar": "salvar resultado",
     "avisoOrigem": "esta sala nao publica o resumo do torneio, entao estes numeros ficam marcados como preenchidos por voce. Eles entram no seu ROI e no seu bankroll.",
@@ -354,6 +356,7 @@
     "erroColocacaoMaior": "A colocacao nao pode ser maior que o numero de jogadores.",
     "erroSalvar": "Nao foi possivel salvar agora. Tente de novo em instantes.",
     "preencher": "preencher",
-    "digitado": "digitado por voce"
+    "digitado": "digitado por voce",
+    "erroEntradas": "As entradas precisam ser 1 ou mais."
   }
 }

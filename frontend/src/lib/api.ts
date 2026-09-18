@@ -850,13 +850,18 @@ export const tournaments = {
     ),
 
   // Complementa a premiação com o arquivo de resultados (ACR/WPN '.ots'): prize/profit/place reais
-  /** O jogador PREENCHE o resultado, para as salas que não publicam summary (PartyPoker). O
-   *  lucro não vai no corpo: o servidor o calcula de `prize - buy_in`. */
+  /** O jogador PREENCHE o resultado, para as salas que não publicam summary (PartyPoker).
+   *
+   *  O lucro não vai no corpo: o servidor o calcula. E `buy_in` é o de UMA entrada; `entradas` diz
+   *  quantas vezes ele entrou, e o custo é o produto dos dois. O `buy_in` que VOLTA é o custo
+   *  total, porque é ele que o ROI usa (a mesma convenção do caminho do arquivo). */
   resultadoManual: (tournamentId: string, dados: {
     place: number; prize: number; buy_in: number; field_size?: number | null;
+    entradas?: number;
   }) =>
     request<{
       tournament_id: string; place: number; prize: number; buy_in: number; profit: number;
+      entradas: number; re_entries: number;
       field_size: number | null; financeiro_origem: "manual";
     }>(`/tournament/${encodeURIComponent(tournamentId)}/results/manual`, {
       method: "POST", body: JSON.stringify(dados),

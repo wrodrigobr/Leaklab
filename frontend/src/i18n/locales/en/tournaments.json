@@ -345,6 +345,8 @@
     "jogadores": "players",
     "buyIn": "buy-in ($)",
     "premio": "prize ($)",
+    "entradas": "entries",
+    "custoTotal": "total cost",
     "lucro": "profit",
     "salvar": "save result",
     "avisoOrigem": "this room does not publish the tournament summary, so these numbers are marked as filled in by you. They count toward your ROI and bankroll.",
@@ -354,6 +356,7 @@
     "erroColocacaoMaior": "The finish cannot be higher than the number of players.",
     "erroSalvar": "We could not save it right now. Try again in a moment.",
     "preencher": "fill in",
-    "digitado": "filled in by you"
+    "digitado": "filled in by you",
+    "erroEntradas": "Entries must be 1 or more."
   }
 }

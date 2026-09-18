@@ -95,6 +95,54 @@ def test_preenche_e_o_lucro_e_CALCULADO():
     assert t['financeiro_origem'] == 'manual', 'sem a procedencia o digitado se passa por arquivo'
 
 
+def test_as_ENTRADAS_entram_no_custo_e_o_re_entries_fica_registrado():
+    """Achado com os dados reais do dono: sete torneios do PartyPoker, um com re-entrada.
+
+    O lucro so fechava se o buy-in digitado ja fosse o TOTAL -- e ai a etiqueta do torneio ficava
+    errada (um torneio de $1,10 registrado como $2,20) e o `re_entries` nao existia, enquanto o
+    caminho do ARQUIVO registra os dois.
+
+    A convencao e a mesma dos dois caminhos, e esta escrita no codigo do arquivo: o custo real vai
+    para a coluna `buy_in`, porque nao ha coluna de "total investido" e e dela que o ROI soma.
+    Divergir aqui faria o mesmo torneio ter custo diferente conforme a fonte.
+    """
+    cli, cab, uid, gc = _ambiente()
+    # o caso real: 22/94, buy-in de 1,10, DUAS entradas, premio de 2,08 -> lucro -0,12
+    r = cli.post('/tournament/%s/results/manual' % TID, headers=cab,
+                 json={'place': 22, 'prize': 2.08, 'buy_in': 1.10, 'field_size': 94,
+                       'entradas': 2})
+    assert r.status_code == 200, (r.status_code, r.data)
+    corpo = json.loads(r.data)
+    assert corpo['buy_in'] == 2.20, ('o buy_in de volta e o CUSTO', corpo)
+    assert corpo['profit'] == -0.12, corpo
+    assert corpo['entradas'] == 2 and corpo['re_entries'] == 1, corpo
+
+    t = _torneio(gc, uid)
+    assert t['buy_in'] == 2.20 and t['profit'] == -0.12, t
+    assert t['re_entries'] == 1, 'a re-entrada nao ficou registrada: %s' % t.get('re_entries')
+
+
+def test_SEM_entradas_o_custo_e_o_buy_in(_=None):
+    """CONTROLE do caso acima: sem ele, um `entradas` cravado em 2 passaria verde la.
+
+    O campo e opcional de proposito -- a maioria dos torneios nao tem re-entrada, e exigir o numero
+    obrigaria todo jogador a preencher um campo que quase sempre vale 1.
+    """
+    cli, cab, uid, gc = _ambiente()
+    r = cli.post('/tournament/%s/results/manual' % TID, headers=cab,
+                 json={'place': 5, 'prize': 6.16, 'buy_in': 1.10, 'field_size': 92})
+    corpo = json.loads(r.data)
+    assert corpo['buy_in'] == 1.10 and corpo['profit'] == 5.06, corpo
+    assert corpo['entradas'] == 1 and corpo['re_entries'] == 0, corpo
+
+    # e entradas ZERO e recusada com frase, nao aceita como 1: quem digita 0 errou, e o silencio
+    # transformaria o erro dele num numero plausivel
+    r0 = cli.post('/tournament/%s/results/manual' % TID, headers=cab,
+                  json={'place': 5, 'prize': 6.16, 'buy_in': 1.10, 'entradas': 0})
+    assert r0.status_code == 422, (r0.status_code, r0.data)
+    assert not json.loads(r0.data)['error'].isdigit(), 'erro numerico vazou para o usuario'
+
+
 def test_o_lucro_que_o_CLIENTE_manda_e_ignorado():
     """Se o cliente pudesse mandar o lucro, entraria um conjunto que nao fecha -- e o ROI usaria
     um dos tres numeros sem ninguem saber qual."""
