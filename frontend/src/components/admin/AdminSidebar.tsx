@@ -16,6 +16,7 @@ export type AdminSection =
   | "gto-worker"
   | "challenge"
   | "tournaments"
+  | "sharkscope"
   | "logs"
   ;
 

@@ -60,7 +60,7 @@
     "gtoMixedTip": "Mixed strategy: GTO frequency 30–60%, valid action, but not dominant in the range",
     "gtoMinorTip": "Minor deviation: GTO frequency 10–30%, infrequent in GTO, but defensible",
     "gtoCriticalTip": "Critical deviation: GTO frequency < 10%, rarely justified by the solver",
-    "evLossTip": "EV lost vs the best play for this hand, how many big blinds you left on the table.",
+    "evLossTip": "The EV gap between your play and the solver's best, in big blinds. It is the size of the mistake inside the model, not money out of your pocket. Use it to pick which decision to review first.",
     "srcHeuristic": "Heuristic",
     "srcGtoTip": "GTO Solver: Nash equilibrium frequencies computed for this spot",
     "srcPreflopTip": "Preflop: GTO opening ranges by position and stack depth",
@@ -524,7 +524,9 @@
     "spotMisto": {
       "label": "Mixed Spot",
       "tooltip": "Mixed-strategy spot: the solver balances several actions here. That means there is no single correct answer: GTO spreads frequency across the lines to stay unpredictable and unexploitable. Any line at 10% or more is defensible."
-    }
+    },
+    "naoEhOrdem": "Frequency is not an order. An action at 70% in the solver is the most common one at equilibrium, not an \"always\". Repeating only the highest frequency in every hand destroys the very equilibrium it describes, and makes you predictable.",
+    "custoDeOportunidade": "Opportunity cost: −{{bb}} bb vs the highest-EV line"
   },
   "pkoTooltip": "Progressive Knockout (PKO), a bounty tournament. Its specific GTO ranges and thresholds can differ from a classic MTT.",
   "coachModo": {

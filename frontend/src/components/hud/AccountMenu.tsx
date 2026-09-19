@@ -141,6 +141,18 @@ export function AccountMenu({ workspace, onSwitchWorkspace }: AccountMenuProps =
               <p className="font-mono text-[10px] uppercase tracking-widest-2 text-muted-foreground">{t("conta.usoMes")}</p>
               <UsageBar used={user.tournaments_used ?? 0} limit={limits?.tournaments} label="Torneios" />
               <UsageBar used={user.ai_calls_used ?? 0}   limit={limits?.ai_calls}    label={t("conta.analises")} />
+              {/* O teto do Prática aparece ONDE o jogador já olha os outros: o dono pediu que a
+                  limitação ficasse explícita, e o menu de conta é o lugar onde ela é comparável
+                  com torneios e análises.
+
+                  A barra só entra com a contagem em mãos. `practice_spots_used` vem `null` quando
+                  a contagem falhou no servidor, e `?? 0` aqui desenharia "0 de 30 usados" para
+                  quem talvez tenha usado 29. */}
+              {user.practice_spots_used != null && (
+                <UsageBar used={user.practice_spots_used}
+                          limit={limits?.practice_spots_per_month}
+                          label={t("conta.pratica")} />
+              )}
               {plan === "free" && (
                 <button
                   onClick={() => { setOpen(false); setCheckoutPlan("pro"); }}

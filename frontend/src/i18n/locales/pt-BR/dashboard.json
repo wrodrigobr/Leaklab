@@ -150,7 +150,7 @@
     "empty": "Importe torneios para ativar a análise de confiança da IA."
   },
   "leaks": {
-    "tooltip": "Plano de treino dos seus leaks: progresso no Ghost Table, tendência e atalho pro estudo de cada um, ordenados por impacto de EV. O diagnóstico de onde você perde EV está no Leak Finder.",
+    "tooltip": "Plano de treino dos seus leaks: progresso no Ghost Table, tendência e atalho pro estudo de cada um, ordenados por impacto de EV. O diagnóstico de onde você perde EV está no Leak Finder. Os valores por mês são projeção do seu volume, não extrato de caixa.",
     "title": "Fila de Treino",
     "study": "Estudar",
     "studyLabel": "Estudar leak {{spot}}",
@@ -338,8 +338,8 @@
   },
   "leakFinder": {
     "title": "Leak Finder",
-    "tooltip": "Seus vazamentos priorizados pelo EV PERDIDO (big blinds deixados na mesa), não por contagem de erros. O topo é onde mais EV escapa, comece por ele.",
-    "headline_label": "deixados na mesa em {{n}} spots vazados",
+    "tooltip": "Seus leaks priorizados pelo EV perdido em big blinds, não por contagem de erros. O topo é onde mais EV escapa, comece por ele. O total serve para ordenar, não é extrato: leak com poucas ocorrências ainda é hipótese, não diagnóstico.",
+    "headline_label": "de EV perdido em {{n}} spots",
     "spots_title": "Maiores vazamentos por EV",
     "idealPrefix": "ideal:",
     "coaching": "Ataque de cima pra baixo: corrigir o leak nº 1 vale mais que vários pequenos. Cada linha é um spot recorrente, revise-o no Replayer e treine no Ghost Table.",
@@ -872,7 +872,8 @@
     "analises": "Análises GrindLab",
     "aria": "Menu da conta",
     "upgrade": "Upgrade para Pro",
-    "docs": "Documentação"
+    "docs": "Documentação",
+    "pratica": "Prática (spots/mês)"
   },
   "quota": {
     "titulo": "Limite mensal próximo",
@@ -889,7 +890,7 @@
     "sub": "Você completou seu treino grátis de hoje. Veja como foi:",
     "precisao": "Precisão",
     "sequencia": "Melhor sequência",
-    "bbNaMesa": "EV deixado na mesa (bb)",
+    "bbNaMesa": "EV perdido (bb)",
     "diasSeguidos": "{{n}} dias seguidos",
     "porCenario": "Acerto por cenário",
     "noPro": "No Pro você treina também:",

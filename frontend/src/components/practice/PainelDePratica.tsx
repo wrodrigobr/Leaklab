@@ -66,12 +66,23 @@ const COR_DA_BARRA: Record<Nivel, string> = {
 };
 
 export function PainelDePratica({
-  aberto, config, pendente, stats, tetoDeMesas, onConfig, onAlternar, onAplicar,
+  aberto, config, pendente, stats, tetoDeMesas, tetoDoPlano = MAX_MESAS,
+  onConfig, onAlternar, onAplicar,
 }: {
   aberto: boolean;
   /** Quantas mesas a TELA aguenta. No celular e 1, e o seletor trava acima disso: "Nao permitir
    *  aumentar o numero de mesas em telas pequenas" (o dono, 17/09). */
   tetoDeMesas: number;
+  /**
+   * Quantas mesas o PLANO permite (2 no Free, decisao do dono em 18/09).
+   *
+   * Prop separada de `tetoDeMesas` de proposito. Os dois travam o mesmo seletor, e por motivos
+   * diferentes: somar os dois num numero so faria a frase de baixo dizer "tela pequena" para
+   * quem esta barrado pelo plano, ou o contrario. Mentira na tela e pior que botao cinza sem
+   * explicacao, porque o jogador vai tentar consertar a coisa errada (girar o celular, ou
+   * assinar o Pro sem precisar).
+   */
+  tetoDoPlano?: number;
   /** o que está VALENDO nas mesas abertas */
   config: ConfigPratica;
   /** o que o jogador escolheu e entra na próxima rodada; `null` = nada pendente */
@@ -87,6 +98,19 @@ export function PainelDePratica({
   // seguidos no painel fariam o segundo esquecer o primeiro.
   const atual = pendente ?? config;
   const muda = (p: Partial<ConfigPratica>) => onConfig({ ...atual, ...p });
+
+  /** O que trava o seletor agora: o menor dos dois tetos. */
+  const limiteDeMesas = Math.min(tetoDeMesas, tetoDoPlano);
+  /** Quem esta barrando e o PLANO quando ele aperta mais que a tela. */
+  const barraOPlano = tetoDoPlano < tetoDeMesas;
+  /**
+   * O que o seletor DESENHA como escolhido, aparado pelo limite.
+   *
+   * Aparar aqui em vez de reescrever `config` segue a doutrina de `configNaTela`: a escolha dele
+   * fica guardada e volta quando o limite sumir (tela maior, ou Pro). Sem esta linha, chegar por
+   * `?mesas=4` sendo free deixaria NENHUM botao aceso, que parece defeito.
+   */
+  const mesasNaTela = Math.min(atual.mesas, limiteDeMesas);
 
   if (!aberto) {
     return (
@@ -135,22 +159,31 @@ export function PainelDePratica({
         <Rotulo>{t("painel.mesas")}</Rotulo>
         <div className="flex gap-1">
           {Array.from({ length: MAX_MESAS }, (_, i) => i + 1).map((n) => {
-            const cabe = n <= tetoDeMesas;
+            const cabe = n <= limiteDeMesas;
             return (
-              <Seg key={n} on={atual.mesas === n && cabe} onClick={() => cabe && muda({ mesas: n })}
-                   desabilitado={!cabe} titulo={cabe ? undefined : t("painel.soUmaMesa")}
+              <Seg key={n} on={mesasNaTela === n && cabe} onClick={() => cabe && muda({ mesas: n })}
+                   desabilitado={!cabe}
+                   titulo={cabe ? undefined : (barraOPlano ? t("painel.tetoDoPlanoTitulo") : t("painel.soUmaMesa"))}
                    testid={`pratica-mesas-${n}`}>{n}</Seg>
             );
           })}
         </div>
-        {tetoDeMesas < MAX_MESAS && (
-          // A frase explica o que o botao cinza nao explica. Sem ela, o jogador acha que o
-          // seletor esta quebrado -- e no celular ele nao tem como descobrir o motivo.
+        {/* A frase explica o que o botao cinza nao explica. Sem ela, o jogador acha que o seletor
+            esta quebrado -- e no celular ele nao tem como descobrir o motivo.
+
+            Qual das duas frases sai depende de QUEM esta barrando, e nao de qual limite existe:
+            se o plano aperta mais que a tela, o motivo e o plano; se nao, e a tela. */}
+        {barraOPlano ? (
+          <p data-testid="pratica-teto-do-plano"
+             className="mt-1.5 font-mono text-[9px] leading-relaxed text-amber-200/80">
+            {t("painel.tetoDoPlano", { n: tetoDoPlano, max: MAX_MESAS })}
+          </p>
+        ) : tetoDeMesas < MAX_MESAS ? (
           <p data-testid="pratica-so-uma-mesa"
              className="mt-1.5 font-mono text-[9px] leading-relaxed text-muted-foreground/80">
             {t("painel.soUmaMesa")}
           </p>
-        )}
+        ) : null}
         {pendente && (
           <div data-testid="pratica-pendente" className="mt-2">
             {/* ── O botao APLICAR (pedido do dono, 16/09) ────────────────────────────────────

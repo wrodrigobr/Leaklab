@@ -150,7 +150,7 @@
     "empty": "Import tournaments to activate AI confidence analysis."
   },
   "leaks": {
-    "tooltip": "A training plan for your leaks: Ghost Table drill progress, trend, and a study shortcut for each, ordered by EV impact. The diagnosis of where you lose EV is in the Leak Finder.",
+    "tooltip": "A training plan for your leaks: Ghost Table drill progress, trend, and a study shortcut for each, ordered by EV impact. The diagnosis of where you lose EV is in the Leak Finder. The monthly figures are a projection of your volume, not a statement of account.",
     "title": "Training Queue",
     "study": "Study",
     "studyLabel": "Study leak {{spot}}",
@@ -338,8 +338,8 @@
   },
   "leakFinder": {
     "title": "Leak Finder",
-    "tooltip": "Your leaks prioritized by EV LOST (big blinds left on the table), not by error count. The top is where the most EV escapes, start there.",
-    "headline_label": "left on the table across {{n}} leaked spots",
+    "tooltip": "Your leaks prioritized by EV lost in big blinds, not by error count. The top is where the most EV escapes, start there. The total is there to rank them, not as a statement of account: a leak with few occurrences is still a hypothesis, not a diagnosis.",
+    "headline_label": "of EV lost across {{n}} spots",
     "spots_title": "Biggest leaks by EV",
     "idealPrefix": "ideal:",
     "coaching": "Attack top-down: fixing leak #1 is worth more than several small ones. Each row is a recurring spot, review it in the Replayer and train it on the Ghost Table.",
@@ -872,7 +872,8 @@
     "analises": "GrindLab analyses",
     "aria": "Account menu",
     "upgrade": "Upgrade to Pro",
-    "docs": "Documentation"
+    "docs": "Documentation",
+    "pratica": "Practice (spots/mo)"
   },
   "quota": {
     "titulo": "You are close to the monthly limit",
@@ -889,7 +890,7 @@
     "sub": "You finished today's free training. Here is how it went:",
     "precisao": "Accuracy",
     "sequencia": "Best streak",
-    "bbNaMesa": "EV left on the table (bb)",
+    "bbNaMesa": "EV lost (bb)",
     "diasSeguidos": "{{n}} days in a row",
     "porCenario": "Accuracy by spot",
     "noPro": "With Pro you also train:",

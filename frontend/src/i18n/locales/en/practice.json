@@ -28,7 +28,9 @@
     "aplicaDepois": "or wait: it applies on each table next hand",
     "unidade": "unit",
     "aplicarAgora": "apply now",
-    "soUmaMesa": "this screen fits 1 table at a time. Open it on a monitor to train 4 at once."
+    "soUmaMesa": "this screen fits 1 table at a time. Open it on a monitor to train 4 at once.",
+    "tetoDoPlano": "The Free plan opens up to {{n}} tables at once. Pro opens {{max}}.",
+    "tetoDoPlanoTitulo": "The Free plan opens up to 2 tables"
   },
   "cenario": {
     "mixed": "everything",
@@ -84,5 +86,16 @@
       "custo": "cost"
     }
   },
-  "filtroEstreito": "the filter returned {{servidas}} of {{pedidas}} tables: few spots match the chosen position, stack and type"
+  "filtroEstreito": "the filter returned {{servidas}} of {{pedidas}} tables: few spots match the chosen position, stack and type",
+  "cota": {
+    "spots": "{{usados}}/{{limite}} spots this month",
+    "tooltip": "On the Free plan, Practice serves {{limite}} spots per month and up to {{mesas}} tables at once. You have used {{usados}}. The quota resets on {{data}}. Ghost Table drills have their own count, 20 per day.",
+    "esgotada": {
+      "titulo": "You have used this month's {{limite}} spots",
+      "corpo": "The quota resets on {{data}}, and your history stays here. The report shows what you have drilled so far, by position and by spot type.",
+      "relatorio": "See the report",
+      "pro": "Pro: no cap",
+      "volta": "quota resets on {{data}}"
+    }
+  }
 }

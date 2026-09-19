@@ -5,6 +5,279 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## Importador de resultado do SharkScope, e o que ele achou (19/09)
+
+O dono assinou o SharkScope e perguntou se dava para receber os resultados por la, em vez de
+depender de summary. Levantado: **"publishing" nao e webhook** (e a pagina onde o JOGADOR decide
+se aparece publicamente), a API deles exige assinatura **comercial** a partir de US$ 166/mes, e o
+plano Bronze que ele assinou nao emite chave. O que sobrou, e que resolve: ele obtem o JSON pela
+via normal e cola numa tela de admin.
+
+O buraco que isto fecha esta medido: `buy_in` preenchido em **8,9%** dos torneios e `profit` em
+**6,7%**. E o PartyPoker, que nao publica summary que saibamos ler, e justamente a sala que o
+SharkScope rastreia com precisao.
+
+**O que ele NAO faz:** nao busca nada, nao guarda credencial, nao automatiza o site deles (seria
+contornar o licenciamento). E nao traz mao nenhuma -- a base do SharkScope e de RESULTADO. Isto
+completa a camada financeira, e nunca a de analise.
+
+### O risco nao e o numero, e o PAREAMENTO
+
+Casar o resultado de um torneio com outro poe dinheiro na linha errada. Na primeira comparacao
+entre o JSON e producao eu casei por dia + buy-in e **troquei os pares** em dias com dois torneios
+do mesmo valor: apareceram divergencias que nao existiam no dado. O pareamento e por dia +
+COLOCACAO, com premio e buy-in como desempate, e nenhum torneio e usado duas vezes.
+
+Por isso a tela nao tem atalho: o botao de aplicar **nao nasce** antes da simulacao, e o seco e o
+molhado leem o MESMO plano, produzido pela mesma funcao. A casa ja pagou por um dry-run cujo
+filtro era mais frouxo que o da execucao real.
+
+### Tres armadilhas do formato, achadas lendo um HAR real
+
+1. **`@reEntries` nao e do jogador**: e o total de re-entradas DO TORNEIO (16, 32, 19 nos dados
+   reais). O numero dele e `@multientries`. Confundir multiplicaria o custo por vinte, e o
+   resultado ainda pareceria plausivel.
+2. **Freeroll entra com stake zero** e precisa chegar marcado, senao contamina o ROI.
+3. **O `@id` e do SharkScope, nao da sala**, entao nao serve de chave.
+
+A hierarquia de confianca fica: **arquivo da sala > SharkScope > digitado**. O importador passa
+pelo `update_tournament_financials`, a mesma porta da entrada manual, e o lucro e CALCULADO.
+
+### O achado que nao era o objetivo: AY-46
+
+Comparando os 12 torneios do JSON com o que producao tem de Party do mesmo jogador: **9 pareiam e
+7 batem exatos**, o que valida as duas fontes de uma vez. Mas **7 linhas de producao nao tem par
+nenhum**, com 1, 3, 3, 24, 27 e 33 maos, e uma delas com buy-in 5,50 num torneio chamado "SNG
+$2.20". O SharkScope tem TUDO que ele jogou no periodo e nao conhece nenhuma delas.
+
+Uma mao nao e um torneio: o parser do PartyPoker esta partindo torneio em varios e inventando
+buy-in. Registrado como AY-46. Foi o SharkScope funcionando como **regua externa** que achou, e a
+lista "nossos, sem correspondencia" da tela existe para esse uso continuar.
+
+---
+
+## O reparo do assento antigo, que so consome sobra (19/09)
+
+Pedido do dono depois de aprovar o conserto do AY-29 para frente: "pode criar uma rotina de
+resolve de spots antigos incluindo 300 spots sempre que o solver estiver ocioso". E, em seguida,
+as duas restricoes que definiram o desenho: "quero usar o solver ocioso, mas **nao quero disparar
+novos solvers**" e "estes spots tem que entrar com a **menor prioridade possivel**".
+
+O lote entra no **PORAO (prioridade 0)**, abaixo ate do lote de import (1), e so e enfileirado no
+ramo do consumidor em que a fila esta VAZIA. O pior caso para um jogador e esperar UM solve
+terminar, nunca o lote.
+
+### Duas travas de CUSTO, e a segunda so existiu porque o dono lembrou
+
+1. **O burst nao conta o porao.** `burst_do_solver._pending()` decide criar um servidor cobrado
+   por hora na Hetzner quando a fila passa de 400, e contava a fila INTEIRA. Um lote de 300
+   spots de reparo poderia subir um box pago. Agora ele conta so `priority > 0`.
+2. **A regra da CARONA.** O dono: "eu havia esquecido do neon... nao podemos deixa-lo ligado, vai
+   gerar um custo alto". Estava certo, e o primeiro conserto cobria so metade: enquanto o reparo
+   RODA, ele manteria o Neon acordado por horas. Agora o lote so trabalha quando houve atividade
+   ORGANICA nos ultimos 15 minutos, ou seja quando o banco ja estaria acordado. A ancora e a
+   atividade organica, nunca a do proprio reparo -- senao o lote se auto-sustenta. E quando nao
+   ha nada pendente, ele dorme 6 horas, porque a varredura (27 mil decisoes pos-flop, com o
+   assento saindo de um CASE que nenhum indice cobre) rodaria a cada 60 segundos para sempre.
+
+**Desligado por padrao** (`REPARO_ASSENTO_ENABLED`), como o win-back: trabalho de fundo que
+consome recurso compartilhado nao comeca sozinho num deploy.
+
+### A guarda do bolso passou verde na primeira quebra
+
+O caso que protege o `_pending()` do burst procurava `priority > 0` no corpo da funcao, e **a
+propria docstring da funcao contem esse texto**: com o corte removido do SQL de proposito, o
+comentario satisfez o teste. Regra 8 da casa, cometida dentro do arquivo escrito para aplicar as
+regras da casa. Agora a varredura remove a docstring antes de olhar, com um controle que prova que
+a remocao aconteceu.
+
+---
+
+## O solver chaveava o spot pelo NOME do assento, nao por quem age depois (19/09)
+
+A sala chama de "UTG" tanto quem tem 8 jogadores atras (mesa 9) quanto quem tem 5 (mesa 6). Quem
+decide como se joga e o segundo numero: o "UTG" de mesa 6 abre como o LJ de mesa 9, **24,7% contra
+16,4% em 30bb**. O solver guardava e resolvia pelo NOME, e producao e 45% mesa 8, 28% mesa 7, 12%
+mesa 6 e so 5% mesa 9 -- ou seja, a maior parte do volume era resolvida com o range de outro
+assento, sempre mais estreito que o real.
+
+### O tamanho do erro, medido no solver de PRODUCAO
+
+Dez spots, cada um resolvido duas vezes (assento cru e assento efetivo), no solver de producao:
+
+- a recomendacao se desloca **~10 pontos percentuais em media, maximo 21,7**
+- em **1 de 10** a ACAO recomendada troca (call vira fold)
+- mas o VEREDITO quase nao muda: **2 em 1.431** decisoes pos-flop, e em direcoes OPOSTAS (uma
+  ok->erro, outra erro->ok), efeito liquido zero
+
+Os dois numeros convivem porque a regua tem faixas largas (>=60% correto, 30-60 misto, 10-30
+desvio menor, <10 critico) e absorve um deslocamento de 10 pontos. **O rotulo fica certo e o
+numero ao lado dele nao** -- e o numero e o que o jogador le.
+
+### O conserto, e por que ele e "para frente"
+
+`assento_efetivo()` traduz pelo MESMO `_mapa_da_mesa` que o motor de veredito e o
+`sql_assento_chart()` das referencias ja usam (nada de terceira tabela de assento no projeto), e
+`montar_payload_postflop` passou a receber `num_players`. Sem esse argumento o comportamento e o
+legado, calado.
+
+**O degrau LEGADO da cascata de leitura e o que torna isto possivel.** O hash e recalculado NA
+LEITURA: trocar a chave sem ele faria toda decisao ja existente calcular uma chave nova, nao achar
+o no dela e ficar SEM VEREDITO -- a familia do bug do board, que passou tres meses gravando com uma
+chave e procurando com outra. O `lookup_gto` ja tinha uma cascata (exato > generico > sem facing);
+o assento legado entrou como mais um degrau. Nada e re-chaveado.
+
+### A armadilha que custou uma rodada de medicao
+
+**Traduzir so a posicao do heroi produz um payload PIOR do que nao traduzir nada.** `opener` e
+`threebettor` sao rotulos de assento no mesmo vocabulario, e `resolve_solver_ranges` compara
+`opener == oop_pos` para decidir quem leva range de abertura e quem leva a de call-vs-RFI. Com a
+traducao pela metade o opener deixa de casar, o ramo troca, e o range capturado (168 chars) vira o
+generico (71). Por isso todo rotulo passa pela mesma funcao, e o teste compara o PAYLOAD INTEIRO
+em vez de enumerar campos: rotulo novo que alguem esqueca de traduzir faz os dois divergirem.
+
+### As guardas, quebradas uma a uma
+
+22 casos. Quebrando de proposito: traduzir so o heroi acusa (hash e payload divergem); tirar o
+degrau legado acusa e **o retorno vira `solver_skipped`**, ou seja a decisao antiga perde o
+veredito -- era argumento meu e virou medicao; a traducao como no-op acusa em 8 casos. Ha controle
+do lado: sem o tamanho da mesa os hashes tem de ser DIFERENTES, senao os casos de equivalencia
+passariam verdes com a traducao desligada.
+
+### O que ficou de fora, de proposito
+
+O acervo ANTIGO. As decisoes ja gravadas seguem sendo servidas pelo no antigo, pelo degrau legado,
+com a porcentagem errada em 6 a 10 pontos e o mesmo veredito. Re-solvar sao ~5 mil spots e fica
+registrado como **AY-29b**, para quando incomodar. O preflop tambem ficou fora: ele nao usa no do
+solver, le a carta, e aquele caminho ja traduzia por conta propria.
+
+### Tres medicoes minhas falharam o proprio controle antes desta
+
+Vale registrar, porque cada uma tinha um numero pronto para ser reportado. (1) Comparar a
+estrategia AGREGADA com a `gto_played_freq` gravada: 0 de 27 batem, porque o gravado e por MAO e o
+binario local estava ANTERIOR ao fonte, sem `hand_table` (**conferir se o container de producao tem
+a mesma defasagem**). (2) Remontar o payload da LINHA do banco: 4 de 19, porque `potType`,
+`preflopOpener` e `preflop3bettor` nao estao la. (3) O medidor gravando o mesmo payload dos dois
+lados, que teria dado "0% de diferenca" com cara de resposta.
+
+---
+
+## O numero de EV falava como extrato bancario (19/09)
+
+A nossa propria definicao ensinava a leitura errada. O `/docs` dizia que o indicador
+'transforma "errado" em "voce vazou X bb"', e as telas diziam "big blinds que voce deixou na
+mesa". **"Deixar na mesa" e expressao de dinheiro**: o jogador le como prejuizo no bolso.
+
+Nao e. E a diferenca entre a jogada dele e a melhor do solver, DENTRO do modelo. O resultado real
+da mao dependeu das cartas que vieram, e ele pode ter ganhado o pote. Pior: o nosso bb perdido
+subestima em torno de 13%, entao apresentar com cara de extrato um numero que sabidamente erra
+junta o pior dos dois mundos.
+
+Agora o numero diz o que e e para que serve: **uma fila de prioridade de revisao**, nao uma conta
+de prejuizo. Seis chaves em tres idiomas: a definicao do `/docs` (que e a raiz, e de onde sai a
+leitura de todo o resto), o tooltip da mao, o tooltip e a manchete do Leak Finder, o rotulo do
+boletim, e uma frase no valor por mes da Fila de Treino, que era o pior de todos: uma PROJECAO do
+volume apresentada nua, sem nada dizendo que era projecao.
+
+### Frequencia nao e ordem
+
+Frase nova, e o unico item desta entrada que nao corrige um texto existente: "uma acao com 70% no
+solver e a mais comum no equilibrio, nao um 'sempre'; repetir so a maior frequencia em todas as
+maos destroi o equilibrio que ela descreve". Aparece SO no spot misto, pelo mesmo corte de 10% do
+selo que ja existia: num no puro ela nao teria o que avisar e seria ruido.
+
+### Dois achados de tabela ao lado
+
+1. **"Custo de oportunidade: -X BB vs linha otima" estava CRAVADO em portugues** dentro do
+   `GtoStrategyPanel`. Jogador em ingles e espanhol lia portugues no meio da propria tela
+   traduzida. Virou chave nos tres idiomas, e "linha otima" virou "linha de maior EV", porque a
+   primeira promete mais do que o numero entrega.
+2. A escada frequencia -> rotulo (0,60 / 0,30 / 0,10) vive em DOIS lugares, `card_verdict.
+   label_for_freq` e inline no `api/app.py`. Nao foi unificada aqui (mexe em veredito, nao em
+   copy), fica anotada.
+
+### O guarda, e o que ele declara NAO cobrir
+
+35 casos travam o idioma de dinheiro nas chaves que DEFINEM a metrica, exigem a ressalva em cada
+idioma, e conferem que as tres linguas tem as mesmas chaves nos blocos tocados. Quebrando de
+proposito (devolver "deixou na mesa"; sumir com uma chave de um idioma), cada quebra acusa com 2
+falhas.
+
+O guarda **nao cobre** um sexto lugar novo que nasca amanha sem a ressalva: isso e disciplina de
+copy e nao estrutura, e vender cobertura que nao existe seria pior do que declarar o limite.
+
+**O caso de CONTROLE e o mais importante do arquivo:** a Academia continua podendo dizer "deixar
+valor na mesa". Sao oito ocorrencias legitimas, idioma de poker numa aula sobre apostar pequeno
+contra station. Uma varredura cega trocaria as duas coisas e ficaria verde enquanto piorava o
+produto; o teste falha se essas sumirem.
+
+---
+
+## O Pratica no Free, com 2 mesas e 30 spots por mes (18/09)
+
+Pedido do dono: "o modo pratica pode ser liberado para plano free, mas eu quero que eles tenham uma
+limitacao de apenas 2 mesas simultaneas e no maximo 30 spots por mes... e isto precisa ficar
+explicito pra eles na tela".
+
+A primeira metade ja era verdade, e vale registrar: **o Pratica nunca esteve fechado**. A rota
+exigia apenas estar logado, e nem `/practice/tables` nem `/practice/grade` olhavam o plano. Entao
+isto nao abriu o modo para o Free: isto colocou o limite que faltava.
+
+### Balde proprio, e nao os 20 por dia do treino avulso
+
+O Free ja tinha `training_spots_per_day: 20`, decidido em 28/08. O Pratica e multimesa e serve ate
+4 spots do solver por rodada, enquanto o treino avulso serve um por vez: misturar os baldes faria
+uma rodada de quatro mesas comer quatro dos vinte spots diarios do Ghost Table, que e outro
+produto. Por isso a cota do Pratica e separada, e por isso a tela **declara os dois tetos** no
+mesmo lugar. Teto que o jogador so descobre batendo nele e indistinguivel de defeito.
+
+### O portao mora no /grade, e nao no /tables
+
+Corrigir e o que gasta cota. Um cliente podia pedir mesa uma vez e corrigir mil vezes, e o teto de
+mesas nao tem nada a ver com isso. O `/tables` tambem clampa, porque sem o clamp no SERVIDOR um
+POST com `n=4` passava direto e a tela nem ficava sabendo.
+
+O contador sai da tabela `pratica_maos`, linha a linha, e nao de um acumulador em `users`: e
+auditavel mao a mao (foi assim que a cota de uma usuaria foi conferida em 18/09) e nao existe o
+risco de o contador dessincronizar do dado.
+
+### Duas coisas que so apareceram porque foram procuradas
+
+**Uma guarda passou verde ao ser quebrada.** O `/tables` tambem limita as mesas pelos spots que
+RESTAM: sem isso, o jogador com um spot sobrando abriria duas mesas e a segunda seria recusada no
+meio da rodada, com a mao ja na tela -- a cota chegando como erro em vez de limite. A trava estava
+escrita e **nenhum teste a cobria**; quebrando-a de proposito, tudo continuou verde. Agora ha caso,
+e ele acusa.
+
+**O primeiro aviso causava um dano que o limite nao causava.** O bloco de "cota esgotada" tomava a
+tela inteira assim que o contador zerava, e com isso o jogador que respondia a 30a mao PERDIA o
+veredito dela: o aviso entrava e apagava as mesas que ele estava lendo. Agora, com mesas na tela, o
+aviso e uma faixa acima da grade, e o bloco cheio so entra quando nao ha mais mesa para mostrar.
+Regra 7 da casa, desta vez do lado de uma feature e nao de um conserto.
+
+### A pegadinha de dialeto
+
+O filtro do mes e `criado_em >= ?` com a string CRUA de proposito. `CAST(? AS TIMESTAMP)` seria o
+reflexo natural e quebraria **so no SQLite**: TIMESTAMP nao e tipo de verdade la, cai em afinidade
+NUMERIC, e '2026-09-01' viraria o numero 2026 -- comparacao sempre falsa e cota sempre zerada. Sem
+um caso que grava mao de mes ANTERIOR, um filtro quebrado passa verde, porque a contagem do mes
+corrente estaria certa por acidente. Provado nos dois bancos, e no Postgres pelo caminho real do
+produto.
+
+### Na tela
+
+Contador fixo na barra do topo (o painel fecha, e no celular ele e uma gaveta sobre as mesas, entao
+a barra e o unico lugar sempre visivel), seletor de mesas travado no 2 com o motivo dito, faixa e
+bloco de fim de cota com o relatorio e a saida do Pro, e uma barra de uso no menu de conta ao lado
+das de torneios e analises. Nos tres idiomas.
+
+O seletor de mesas tem agora DOIS limites com motivos diferentes: a tela e o plano. A frase que
+aparece e a de quem esta apertando mais, porque trocar uma pela outra faz o jogador consertar a
+coisa errada -- girar o celular quando o barrado e o plano, ou assinar o Pro quando o barrado e a
+janela.
+
+---
+
 ## O e-mail chegava assinado por "noreply" (18/09)
 
 O dono fotografou a caixa de entrada: a mensagem chegava com o remetente **noreply**, e nao com a

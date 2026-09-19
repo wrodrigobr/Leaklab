@@ -5653,6 +5653,20 @@ PLAN_LIMITS: dict = {
                 # engaja e a EMBALAGEM: eles fecham a sessao com um boletim, nao com uma
                 # parede. Ver `BoletimDaSessao` no front.
                 'training_spots_per_day': 20, 'leak_targeted': False, 'ghost': False,
+                # Modo Pratica no Free (decisao do dono, 18/09): LIBERADO, com dois tetos.
+                #
+                # Ele nunca esteve fechado -- a rota so exigia estar logado, e nem `/practice/
+                # tables` nem `/practice/grade` olhavam o plano. Entao isto nao "abre" o modo:
+                # isto coloca o limite que faltava.
+                #
+                # BALDE PROPRIO, e nao os 20/dia acima: o dono pediu "30 spots por mes", e o
+                # Pratica e multimesa (ate 4 spots do solver por rodada), enquanto o treino
+                # avulso serve um por vez. Misturar os dois baldes faria uma rodada de 4 mesas
+                # comer 4 dos 20 spots diarios do Ghost Table, que e outro produto.
+                #
+                # O teto de MESAS vale no servidor, nao so na tela: sem o clamp aqui qualquer um
+                # manda `n=4` no POST e o front nem fica sabendo.
+                'practice_tables': 2, 'practice_spots_per_month': 30,
                 # Teto do ARQUIVO de upload, em MB (decisao do dono, 16/09). 5 MB no free sao
                 # ~3.900 maos pelo tamanho medido no export real (1,3 KB por mao), o que cobre
                 # bem mais que os 30 torneios que ele pode importar por mes. Quem exporta o mes
@@ -5664,6 +5678,8 @@ PLAN_LIMITS: dict = {
                 'ai_chat_per_day': 50, 'solves_per_day': 20,   'max_pending_solves': 10,
                 'simultaneous_analyses': None,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True,
+                # None nos dois = sem teto; as mesas caem no `MAX_MESAS` do modulo (4).
+                'practice_tables': None, 'practice_spots_per_month': None,
                 # 40 MB: o maior export real medido tem 15,0 MB (o PartyPoker do Rullian, 11.722
                 # maos em 117 torneios), e 40 da folga de 2,6x para quem exporta trimestre em vez
                 # de mes. E o teto que o `MAX_CONTENT_LENGTH` do Flask precisa acomodar, porque
@@ -5674,6 +5690,7 @@ PLAN_LIMITS: dict = {
                 'ai_chat_per_day': None, 'solves_per_day': None, 'max_pending_solves': None,
                 'simultaneous_analyses': None,
                 'training_spots_per_day': None, 'leak_targeted': True, 'ghost': True,
+                'practice_tables': None, 'practice_spots_per_month': None,
                 'upload_mb': 40},  # interno
 }
 

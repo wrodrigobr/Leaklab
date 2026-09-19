@@ -265,6 +265,40 @@ def relatorio(user_id: int, ultimas_n: int = ULTIMAS_PADRAO) -> dict:
     }
 
 
+def contagem_desde(user_id: int, desde: str) -> int:
+    """Quantas maos AVALIADAS o jogador gravou desde `desde` (string ISO, inclusive).
+
+    E o relogio da cota mensal do Pratica. A contagem sai da tabela, e nao de um acumulador em
+    `users`, por dois motivos: ela e auditavel mao a mao (a cota da Luciper so foi conferivel
+    porque havia linha por linha) e nao existe o risco do contador dessincronizar do dado.
+
+    ── A pegadinha de dialeto, que quase me pegou ────────────────────────────────────────────
+
+    O filtro e `criado_em >= ?` com a string CRUA de proposito. `CAST(? AS TIMESTAMP)` seria o
+    reflexo natural e quebra SO no SQLite: TIMESTAMP nao e tipo de verdade la, cai em afinidade
+    NUMERIC, e '2026-09-01' viraria o numero 2026 -- comparacao sempre falsa, cota sempre zerada.
+    Sem o CAST funciona nos dois: no SQLite e comparacao de texto ISO, no Postgres o parametro
+    desconhecido e convertido para timestamp pelo proprio servidor. Coberto nos dois bancos.
+
+    ── O furo que ainda nao existe, e por que fica anotado ───────────────────────────────────
+
+    Hoje `apagar_do_jogador` so e chamado em teste e na exclusao de conta. Se algum dia nascer um
+    botao de "limpar historico" na tela, ele ZERA a cota do mes junto, e o jogador free ganha
+    spots infinitos. Quem for criar esse botao precisa decidir isso de proposito.
+    """
+    _tabela()
+    from database.repositories import _adapt
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            _adapt("SELECT COUNT(*) AS n FROM pratica_maos WHERE user_id = ? AND criado_em >= ?"),
+            (int(user_id), str(desde)),
+        ).fetchone()
+        return int((dict(row) if row else {}).get('n') or 0)
+    finally:
+        conn.close()
+
+
 def apagar_do_jogador(user_id: int) -> int:
     """Apaga o historico DELE. Existe para a exclusao de usuario nao deixar orfao: a tabela
     `uploads_recebidos` ficou fora daquela lista e o achado e recente."""

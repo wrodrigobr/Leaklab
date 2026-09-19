@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, History as HistoryIcon, Loader2, SlidersHorizontal, X } from "lucide-react";
-import { metrics, practice, type EvLeak, type PracticeGrade, type PracticeTable } from "@/lib/api";
+import { metrics, practice, type CotaDaPratica, type EvLeak, type PracticeGrade, type PracticeTable } from "@/lib/api";
+import { ContadorDaCota, CotaEsgotada } from "@/components/practice/CotaDaPratica";
 import { MesaDePratica } from "@/components/practice/MesaDePratica";
 import { PainelDePratica } from "@/components/practice/PainelDePratica";
 import { RelatorioDePratica } from "@/components/practice/RelatorioDePratica";
@@ -137,6 +138,21 @@ export default function Practice() {
    * `pedidas` e `servidas`; quem nao usava era a tela.
    */
   const [estreito, setEstreito] = useState<{ pedidas: number; servidas: number } | null>(null);
+  /**
+   * A cota do modo, como o servidor a calcula. `null` até a primeira resposta chegar.
+   *
+   * Ela NÃO é derivada aqui de `stats.maos`: o placar da sessão conta o que foi respondido nesta
+   * aba, e a cota é do MÊS, atravessa sessão e aparelho. Contar na tela faria dois números
+   * discordarem, e o que barra é o do servidor.
+   */
+  const [cota, setCota] = useState<CotaDaPratica | null>(null);
+  /**
+   * Quantas mesas podem abrir AGORA: o menor entre o que a tela aguenta e o que o plano permite.
+   *
+   * São dois limites com motivos diferentes, e por isso o painel precisa saber os dois separados:
+   * dizer "tela pequena" para quem está barrado pelo plano (ou o contrário) é mentira na tela.
+   */
+  const tetoDoPlano = cota?.mesas ?? MAX_MESAS;
   const [foco, setFoco] = useState(0);
   const [respostas, setRespostas] = useState<
     Record<number, { acao: string; grade: PracticeGrade | null; avaliando: boolean }>
@@ -196,9 +212,15 @@ export default function Practice() {
         cenario: c.cenario, stacks: c.stacks, posicoes: c.posicoes,
         evitar: vistos.current.slice(-400),
       });
+      setCota(r.cota ?? null);
       const vindas = r.tables ?? [];
       // Sem mesa nenhuma não há tela: melhor dizer que o filtro não tem spot do que piscar vazio.
-      if (!vindas.length) { setErro(true); setMesas([]); return; }
+      //
+      // Mas "sem spot no filtro" e "cota do mês esgotada" chegam IGUAIS aqui, os dois com a lista
+      // vazia, e quem distingue é a cota. Sem esse desvio, o jogador free que acabou os 30 spots
+      // leria "o filtro não tem spot" e mexeria no filtro para sempre, atrás de mesas que a cota
+      // é que está barrando.
+      if (!vindas.length) { if (!r.cota?.esgotado) setErro(true); setMesas([]); return; }
       setEstreito(r.servidas < r.pedidas ? { pedidas: r.pedidas, servidas: r.servidas } : null);
       vistos.current = [...vistos.current, ...vindas.map((m) => m.id)];
       setMesas(vindas);
@@ -260,6 +282,9 @@ export default function Practice() {
     }
     setRespostas((r) => ({ ...r, [i]: { acao, grade, avaliando: false } }));
     setStats((s) => acumula(s, grade, acao));
+    // O contador anda com a mão respondida, e o número vem do servidor recontado. Sem isto o
+    // jogador só descobriria o consumo na rodada seguinte, com quatro mesas já gastas.
+    if (grade?.cota) setCota(grade.cota);
 
     const nivel = nivelDoGrade(grade, acao);
     setFoco((f) => {
@@ -305,8 +330,11 @@ export default function Practice() {
       const r = await practice.tables(1, {
         cenario: c.cenario, stacks: c.stacks, evitar: vistos.current.slice(-400),
       });
+      setCota(r.cota ?? null);
       const nova = r.tables?.[0];
-      if (!nova) return;                 // sem spot no filtro: a mesa fica com o veredito à vista
+      // Sem spot no filtro OU cota esgotada: nos dois casos a mesa fica com o veredito à vista,
+      // que é o certo. A diferença aparece no contador e no aviso da barra, não aqui.
+      if (!nova) return;
       vistos.current = [...vistos.current, nova.id];
       setMesas((ms) => ms.map((m, k) => (k === i ? nova : m)));
       setRespostas((rs) => {
@@ -440,6 +468,10 @@ export default function Practice() {
           <span className="truncate font-mono text-[10.5px] tracking-widest text-muted-foreground">
             {t("sessao", { maos: stats.maos, min: minutos })}
           </span>
+          {/* O teto fica à vista o tempo todo, e não só quando acaba: foi o pedido explícito do
+              dono. A barra do topo é o único lugar sempre visível, porque o painel fecha e no
+              celular ele é uma gaveta que cobre as mesas. */}
+          <ContadorDaCota cota={cota} />
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
         {/* O relatorio abre SOBRE a tela do treino, e nao em outra rota: o jogador consulta e
@@ -456,7 +488,7 @@ export default function Practice() {
       <div className="relative flex min-h-0 flex-1">
         <RelatorioDePratica aberto={relatorio} onFechar={() => setRelatorio(false)} />
         <PainelDePratica aberto={painel} config={config} pendente={pendente} stats={stats}
-                         tetoDeMesas={teto}
+                         tetoDeMesas={teto} tetoDoPlano={tetoDoPlano}
                          onConfig={aoConfigurar} onAlternar={alternarPainel}
                          onAplicar={aplicarAgora} />
 
@@ -470,6 +502,14 @@ export default function Practice() {
             <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> <span className="font-mono text-xs">{t("carregando")}</span>
             </div>
+          ) : cota?.esgotado && !mesas.length ? (
+            // ANTES do `erro`, de propósito: com a cota esgotada o servidor devolve lista vazia,
+            // e sem esta ordem a tela cairia no "sem spot neste filtro" e mandaria o jogador
+            // caçar um filtro que não é o problema.
+            //
+            // E só com a tela SEM mesas: com mesas abertas o aviso desce para a faixa acima da
+            // grade, senão ele apaga os vereditos que o jogador está lendo.
+            <CotaEsgotada cota={cota} onRelatorio={() => setRelatorio(true)} />
           ) : erro ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
               <p className="font-mono text-sm text-foreground">{t("semSpot.titulo")}</p>
@@ -484,6 +524,11 @@ export default function Practice() {
             // Com o piso, se a celula nao alcanca o minimo a faixa ROLA em vez de achatar; antes
             // de chegar la a grade ja tirou mesa e tirou coluna.
             <>
+            {/* A cota acabou com mesas ainda na tela: faixa, e não bloco. O jogador acabou de
+                responder e está lendo o veredito da última mão. */}
+            {cota?.esgotado && (
+              <CotaEsgotada cota={cota} compacto onRelatorio={() => setRelatorio(true)} />
+            )}
             {estreito && (
               <p data-testid="pratica-filtro-estreito"
                  className="mb-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-mono text-[10px] leading-relaxed text-amber-200/90">

@@ -28,7 +28,9 @@
     "aplicaDepois": "o espera: entra solo en la próxima mano de cada mesa",
     "unidade": "unidad",
     "aplicarAgora": "aplicar ahora",
-    "soUmaMesa": "en esta pantalla cabe 1 mesa por vez. Abrila en un monitor para entrenar 4 a la vez."
+    "soUmaMesa": "en esta pantalla cabe 1 mesa por vez. Abrila en un monitor para entrenar 4 a la vez.",
+    "tetoDoPlano": "En el plan Free son hasta {{n}} mesas a la vez. El Pro abre {{max}}.",
+    "tetoDoPlanoTitulo": "El plan Free abre hasta 2 mesas"
   },
   "cenario": {
     "mixed": "todo",
@@ -84,5 +86,16 @@
       "custo": "costo"
     }
   },
-  "filtroEstreito": "el filtro devolvió {{servidas}} de {{pedidas}} mesas: pocos spots combinan posición, stack y tipo elegidos"
+  "filtroEstreito": "el filtro devolvió {{servidas}} de {{pedidas}} mesas: pocos spots combinan posición, stack y tipo elegidos",
+  "cota": {
+    "spots": "{{usados}}/{{limite}} spots del mes",
+    "tooltip": "En el plan Free, Práctica sirve {{limite}} spots por mes y hasta {{mesas}} mesas a la vez. Ya usaste {{usados}}. La cuota vuelve el {{data}}. El entrenamiento del Ghost Table tiene su propia cuenta, de 20 por día.",
+    "esgotada": {
+      "titulo": "Usaste los {{limite}} spots de este mes",
+      "corpo": "La cuota vuelve el {{data}}, y tu historial sigue acá. El reporte muestra lo que entrenaste hasta ahora, por posición y por tipo de spot.",
+      "relatorio": "Ver el reporte",
+      "pro": "Pro: sin tope",
+      "volta": "la cuota vuelve el {{data}}"
+    }
+  }
 }

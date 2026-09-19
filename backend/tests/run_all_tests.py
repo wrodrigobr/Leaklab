@@ -170,7 +170,12 @@ SUITES = {
                   # `pratica_maos`), e nao aqui: ver a suite abaixo.
                   # ── Teto do upload: o export de 15 MB do Rullian (16/09) ────────────────
                   'test_teto_do_upload.py'],
-    'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_historico_de_pratica.py', 'test_resultado_manual.py', 'test_quota_mensal.py', 'test_fila_de_analise.py', 'test_burst_solver.py', 'test_janela_do_dashboard.py', 'test_escopo_do_dashboard.py', 'test_hud_bate_com_pokertracker.py', 'test_coach_system.py', 'test_notifications.py',
+    'database':  ['test_database.py', 'test_score_alinhado_no_insert.py', 'test_google_auth.py', 'test_exclusao_de_usuario.py', 'test_historico_de_pratica.py',
+                  # A cota do Pratica (2 mesas e 30 spots/mes no Free, 18/09) fica aqui pelo mesmo
+                  # motivo do historico: ela e sobre a tabela `pratica_maos`, que e o relogio da
+                  # contagem, e sobre o `PLAN_LIMITS`. Os portoes de endpoint entram junto porque
+                  # separa-los faria a regra morar em duas suites.
+                  'test_cota_da_pratica.py', 'test_resultado_manual.py', 'test_quota_mensal.py', 'test_fila_de_analise.py', 'test_burst_solver.py', 'test_janela_do_dashboard.py', 'test_escopo_do_dashboard.py', 'test_hud_bate_com_pokertracker.py', 'test_coach_system.py', 'test_notifications.py',
                   'test_solve_quota.py', 'test_coach_adherence_multiway.py', 'test_coach_invites.py',
                   'test_multiway_fora_dos_agregados.py',
                   'test_coach_trial.py', 'test_coach_referral.py', 'test_coach_replay.py',
@@ -229,6 +234,15 @@ SUITES = {
     'challenge': ['test_daily_challenge_difficulty.py', 'test_challenge_adversarial.py'],
     'gto':       ['test_tree_hash.py',
                   'test_board_slice_hash.py',
+                  # AY-29 (19/09): o solve passa a ser chaveado pelo ASSENTO EFETIVO, e a
+                  # leitura mantem um degrau legado para a decisao antiga nao perder o no.
+                  'test_assento_efetivo_no_solver.py',
+                  # Importador ADMIN do JSON do SharkScope: completa o financeiro dos
+                  # torneios (buy_in em 8,9%% do acervo, profit em 6,7%%) sem assinatura Pro.
+                  'test_importador_sharkscope.py',
+                  # AY-29b: o lote que repara o acervo antigo so consome sobra e NUNCA
+                  # faz o burst subir um servidor cobrado.
+                  'test_reparo_do_assento.py',
                   'test_hand_view.py',
                   'test_gto_comparison.py',
                   'test_gto_utils_comprehensive.py',

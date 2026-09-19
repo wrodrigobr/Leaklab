@@ -209,15 +209,31 @@ export function GtoStrategyPanel({ strategy, playedAction, compact, handStrategy
       {/* Mixed strategy badge — when ≥2 actions have ≥10% frequency.
           Texto "Fold 85% · Raise 15%" removido: redundante com as barras acima. */}
       {primary.filter(r => r.frequency >= 0.10).length >= 2 && (
-        <div className="flex items-center gap-2 pt-0.5">
-          <GtoMixedBadge label="spot_mixed" size={compact ? "xs" : "sm"} />
-        </div>
+        <>
+          <div className="flex items-center gap-2 pt-0.5">
+            <GtoMixedBadge label="spot_mixed" size={compact ? "xs" : "sm"} />
+          </div>
+          {/* Frequência não é ordem.
+              Aparece SÓ no spot misto, e pelo mesmo corte de ≥10% do selo acima: num nó puro a
+              frase não teria o que avisar, e seria ruído. O jogador que lê "70%" e passa a fazer
+              aquilo sempre destrói o equilíbrio que o número descreve. O aviso não cabe no card
+              compacto, onde a largura é o recurso escasso. */}
+          {!compact && (
+            <p data-testid="gto-freq-nao-e-ordem"
+               className="font-mono text-[8px] leading-relaxed text-muted-foreground/70">
+              {t("gtoMixed.naoEhOrdem")}
+            </p>
+          )}
+        </>
       )}
 
-      {/* Opportunity cost footer */}
+      {/* Opportunity cost footer.
+          Estava CRAVADO em português dentro do componente: jogador em EN e ES lia esta linha em
+          português no meio da própria tela traduzida. E o texto dizia "vs linha ótima", que
+          promete mais do que o número entrega: a comparação é com a linha de MAIOR EV da mão. */}
       {opportunityCost != null && opportunityCost > 0.01 && !compact && (
         <p className="font-mono text-[8px] text-amber-400/80 pt-0.5">
-          Custo de oportunidade: -{opportunityCost.toFixed(2)} BB vs linha ótima
+          {t("gtoMixed.custoDeOportunidade", { bb: opportunityCost.toFixed(2) })}
         </p>
       )}
     </div>

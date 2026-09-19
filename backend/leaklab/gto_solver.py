@@ -257,9 +257,52 @@ def pote_implausivel(pot_bb, stack_bb, n_ativos=None) -> bool:
     return True
 
 
+def assento_efetivo(pos: str, num_players) -> str:
+    """O assento por JOGADORES ATRÁS, a partir do rótulo que a sala deu.
+
+    ── Por que existe (AY-29, corrigido em 19/09) ────────────────────────────────────────────
+
+    A sala chama de "UTG" tanto quem tem 8 jogadores atrás (mesa 9) quanto quem tem 5 (mesa 6).
+    Quem decide como se joga é o segundo número, não o nome: o "UTG" de mesa 6 abre como o LJ de
+    mesa 9 (24,7% contra 16,4% em 30bb). O solver guardava e resolvia pelo NOME, e produção é
+    45% mesa 8, 28% mesa 7, 12% mesa 6 e só 5% mesa 9 — ou seja, a maior parte do volume.
+
+    Medido no solver de produção, em 10 spots: a recomendação se desloca em média ~10 pontos
+    percentuais (máximo 21,7), e em 1 de 10 a ação recomendada troca. O VEREDITO quase não muda
+    (2 em 1.431 decisões), porque a régua tem faixas largas e absorve o deslocamento — mas a
+    PORCENTAGEM que o jogador lê na tela erra por esse tanto.
+
+    ── A armadilha, que custou uma rodada de medição ────────────────────────────────────────
+
+    Traduzir só a posição do herói produz um payload **pior** do que não traduzir nada.
+    `opener` e `threebettor` são rótulos de assento no MESMO vocabulário, e
+    `resolve_solver_ranges` compara `opener == oop_pos` para decidir quem leva range de abertura
+    e quem leva a de call-vs-RFI. Com a tradução pela metade o opener deixa de casar, o ramo
+    troca, e o range capturado (168 chars) vira o genérico (71). Por isso TODO rótulo de assento
+    que entra no payload passa por aqui, e há teste varrendo isso por declaração.
+
+    Sem o tamanho da mesa devolve o rótulo cru, que é o único palpite honesto — e é o que
+    mantém o comportamento legado de quem ainda não passa o dado.
+    """
+    p = (pos or '').upper().strip()
+    if not p:
+        return p
+    try:
+        n = int(num_players or 0)
+    except (TypeError, ValueError):
+        return p
+    if n < 2:
+        return p
+    # Fonte ÚNICA do mapa: o mesmo `_mapa_da_mesa` que o motor de veredito e o
+    # `sql_assento_chart()` das referências usam. Uma segunda tabela aqui seria a terceira
+    # definição de "assento" no projeto.
+    from leaklab.preflop_gto_ranges import _norm_pos
+    return _norm_pos(p, n)
+
+
 def montar_payload_postflop(street, position, vs_position, board, hero_cards,
                             stack_bb, facing_bb, pot_bb=None, pot_type='',
-                            opener='', threebettor='', n_ativos=None):
+                            opener='', threebettor='', n_ativos=None, num_players=None):
     """(spot_hash, payload_json) de um solve postflop. FONTE UNICA. None quando o gate recusa.
 
     ── Por que isto virou funcao ──────────────────────────────────────────────────────────────
@@ -280,8 +323,12 @@ def montar_payload_postflop(street, position, vs_position, board, hero_cards,
     import json as _json
     from leaklab.gto_utils import compute_spot_hash, board_for_street, normalize_cards
 
-    pos = (position or '').upper()
-    vs = (vs_position or '').upper()
+    # TODOS os rótulos de assento traduzidos aqui, num lugar só. Ver `assento_efetivo`: traduzir
+    # apenas o do herói troca o ramo de `resolve_solver_ranges` e piora o payload.
+    pos = assento_efetivo(position, num_players)
+    vs = assento_efetivo(vs_position, num_players)
+    opener = assento_efetivo(opener, num_players)
+    threebettor = assento_efetivo(threebettor, num_players)
     st = (street or '').strip().lower()
     facing = float(facing_bb or 0.0)
     hero = normalize_cards(hero_cards)
@@ -540,10 +587,17 @@ def lookup_gto(
     position_u = position.upper()
     sb         = stack_bucket(hero_stack_bb)
     hand_type  = hand_to_type(hero_hand)
+    # AY-29 (19/09): o nó novo é guardado e procurado pelo assento EFETIVO. O preflop abaixo
+    # segue pelo rótulo cru de propósito — ele não usa nó do solver, lê a carta, e aquele caminho
+    # já traduz por conta própria (`_analyze_preflop_impl`).
+    pos_efetivo = assento_efetivo(position_u, num_players)
+    vs_efetivo  = assento_efetivo(vs_position, num_players)
+    opener_ef   = assento_efetivo(opener, num_players)
+    threeb_ef   = assento_efetivo(threebettor, num_players)
     # Fase 2: pot_type efetivo ('3bet' só com ranges 3-bet capturadas; senão '' = SRP/legado)
-    _eff_pot   = _effective_pot_type(pot_type, opener, threebettor, hero_stack_bb,
-                                     hero_pos=position_u, vs_pos=(vs_position or ''))
-    spot_hash  = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, facing_size_bb, _eff_pot)
+    _eff_pot   = _effective_pot_type(pot_type, opener_ef, threeb_ef, hero_stack_bb,
+                                     hero_pos=pos_efetivo, vs_pos=(vs_efetivo or ''))
+    spot_hash  = compute_spot_hash(street_l, pos_efetivo, board, hero_hand, hero_stack_bb, facing_size_bb, _eff_pot)
 
     # 1. Preflop — só retorna se houver dados verificados
     if street_l == 'preflop' and hand_type:
@@ -577,11 +631,12 @@ def lookup_gto(
     def _has_strategy(n):
         return n and n.get('strategy_json')
 
-    def _pick_node(pt: str):
+    def _pick_node(pt: str, pos: str = None):
         """Melhor nó pra um pot_type: exato > genérico (sem hero_hand) > sem-facing."""
-        h_exact = compute_spot_hash(street_l, position_u, board, hero_hand, hero_stack_bb, facing_size_bb, pt)
-        h_gen   = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, facing_size_bb, pt)
-        h_nf    = compute_spot_hash(street_l, position_u, board, [],        hero_stack_bb, 0.0, pt)
+        pos = pos or pos_efetivo
+        h_exact = compute_spot_hash(street_l, pos, board, hero_hand, hero_stack_bb, facing_size_bb, pt)
+        h_gen   = compute_spot_hash(street_l, pos, board, [],        hero_stack_bb, facing_size_bb, pt)
+        h_nf    = compute_spot_hash(street_l, pos, board, [],        hero_stack_bb, 0.0, pt)
         ne  = get_gto_node(h_exact)
         ng  = get_gto_node(h_gen) if h_gen != h_exact else None
         nnf = (get_gto_node(h_nf) if facing_size_bb == 0 and h_nf != h_gen else None)
@@ -590,6 +645,18 @@ def lookup_gto(
         return best, h_exact
 
     node, _ = _pick_node(_eff_pot)
+    # ── DEGRAU LEGADO da cascata (AY-29, 19/09) ───────────────────────────────────────────────
+    #
+    # O hash é recalculado NA LEITURA. Trocar o assento na chave sem este degrau faria toda
+    # decisão já existente calcular uma chave nova, não achar o nó dela e ficar SEM VEREDITO —
+    # a mesma família do bug do board, que passou três meses gravando com uma chave e procurando
+    # com outra.
+    #
+    # Aqui não se re-chaveia nada (a linha vermelha do item): só se procura também pela chave
+    # antiga. Spot NOVO nasce com o assento efetivo e o range certo; decisão ANTIGA continua
+    # achando o nó que sempre foi dela. O acervo se renova sozinho conforme o jogador importa.
+    if node is None and pos_efetivo != position_u:
+        node, _ = _pick_node(_eff_pot, position_u)
     # Fallback SRP: SÓ em read-only (ex.: /replay). Pote 3-bet sem nó 3-bet solvado → serve o
     # nó SRP (aproximação), nunca pior que o legado. Quando SOLVANDO (precompute,
     # allow_remote_solve=True) NÃO cai no SRP — segue pro solve do nó 3-bet de verdade.
@@ -602,15 +669,25 @@ def lookup_gto(
     _approx_stack = None
     if (not _has_strategy(node)) and street_l != 'preflop' \
             and hero_stack_bb > _DEEP_APPROX_MIN_BB and not allow_remote_solve:
+        def _no_dos_dois_assentos(_hh, _stack, _facing, _pt):
+            """Lê o nó pelo assento EFETIVO e cai no LEGADO, a mesma cascata do `_pick_node`.
+
+            Sem isto, o deep-approx (que só lê nós já existentes, todos gravados sob o rótulo
+            da sala) pararia de achá-los no dia em que a chave mudou."""
+            _n = get_gto_node(compute_spot_hash(street_l, pos_efetivo, board, _hh, _stack, _facing, _pt))
+            if not _has_strategy(_n) and pos_efetivo != position_u:
+                _n = get_gto_node(compute_spot_hash(street_l, position_u, board, _hh, _stack, _facing, _pt))
+            return _n
+
         for _hh in (hero_hand, []):
             # A variante viaja junto: um nó deep-approx LEGADO servido a um spot 'oop_pfr'
             # teria as ranges trocadas — miss honesto até existir o nó na chave certa.
-            _na = get_gto_node(compute_spot_hash(street_l, position_u, board, _hh, _DEEP_APPROX_STACK_BB, facing_size_bb, _eff_pot))
+            _na = _no_dos_dois_assentos(_hh, _DEEP_APPROX_STACK_BB, facing_size_bb, _eff_pot)
             if _has_strategy(_na):
                 node, _approx_stack = _na, _DEEP_APPROX_STACK_BB
                 break
         if _approx_stack is None and facing_size_bb == 0:
-            _na = get_gto_node(compute_spot_hash(street_l, position_u, board, [], _DEEP_APPROX_STACK_BB, 0.0))
+            _na = _no_dos_dois_assentos([], _DEEP_APPROX_STACK_BB, 0.0, '')
             if _has_strategy(_na):
                 node, _approx_stack = _na, _DEEP_APPROX_STACK_BB
     # Nó com estratégia completa (strategy_json) → retorna imediatamente
@@ -781,9 +858,12 @@ def lookup_gto(
     # RFI). Fallback pras _DEFAULT_RANGES genéricas quando o GW não cobre o cenário.
     # Fonte ÚNICA da atribuição de ranges: o enfileiramento do upload chama a MESMA função.
     # Antes, ele montava as suas próprias três linhas e trocava os jogadores de lugar.
+    # AY-29: o solve que nasce aqui usa o assento EFETIVO, como o do enfileiramento. Este era o
+    # ponto que importava: um solve disparado com o rótulo da sala monta o range do assento
+    # errado e o nó nasce com a resposta de outro jogador.
     ip_range, oop_range, _ = resolve_solver_ranges(
-        position_u, _vs, hero_stack_bb,
-        pot_type=pot_type, opener=opener, threebettor=threebettor)
+        pos_efetivo, vs_efetivo or _vs, hero_stack_bb,
+        pot_type=pot_type, opener=opener_ef, threebettor=threeb_ef)
     effective_pot = pot_bb if pot_bb > 0 else max(_facing_solver_bb * 2 + 2, 4.0)
 
     # Read-only: quem chama com allow_remote_solve=False (ex.: /replay) NÃO dispara um

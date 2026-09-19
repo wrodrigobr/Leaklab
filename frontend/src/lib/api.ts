@@ -89,7 +89,20 @@ export interface UserProfile {
   plan: string;
   tournaments_used: number;
   ai_calls_used: number;
-  plan_limits: { tournaments: number | null; ai_calls: number | null };
+  /**
+   * Spots do Prática usados no mês corrente.
+   *
+   * `null` quando a contagem falhou no servidor, e isso é diferente de `0`: zero diria "você não
+   * usou nada", que é o zero tranquilizador que a casa já pagou caro. Quem desenha tem de sumir
+   * com a barra nesse caso, não desenhar vazia.
+   */
+  practice_spots_used?: number | null;
+  plan_limits: {
+    tournaments: number | null; ai_calls: number | null;
+    /** teto de mesas simultâneas do Prática (2 no Free, `null` sem teto) */
+    practice_tables?: number | null;
+    practice_spots_per_month?: number | null;
+  };
   /** Stripe current_period_end (ISO) — próxima cobrança, ou fim do acesso se cancelado */
   plan_expires_at?: string | null;
   whatsapp_phone?: string | null;
@@ -2366,13 +2379,35 @@ export interface PracticeGrade {
   ev_loss_bb?: number | null;
   xp_awarded?: number;
   available?: boolean;
+  /** a cota DEPOIS desta mão, recontada no servidor */
+  cota?: CotaDaPratica | null;
+}
+
+/**
+ * A cota do modo Prática, como o SERVIDOR a calcula.
+ *
+ * Vem nas duas respostas (montar mesas e corrigir) de propósito: o contador na tela tem de andar
+ * junto com a mão respondida, e buscar `/auth/me` depois de cada mão seria uma chamada a mais por
+ * mão, com quatro mesas girando. `spots_limite` e `spots_restantes` saem `null` em plano sem teto,
+ * e não um número grande, para a barra não desenhar "quase cheia" para quem não tem limite.
+ */
+export interface CotaDaPratica {
+  plano: string;
+  /** teto de mesas simultâneas do plano, já aparado pelo teto do modo */
+  mesas: number;
+  spots_limite: number | null;
+  spots_usados: number;
+  spots_restantes: number | null;
+  esgotado: boolean;
+  /** dia em que a cota volta (ISO, primeiro dia do mês seguinte) */
+  renova_em: string;
 }
 
 export const practice = {
   /** `evitar` = ids de spot já vistos na sessão. Vai em POST porque cresce sem teto, e em query
    *  string bateria no limite de URL calado depois de algumas centenas de mãos. */
   tables: (n: number, opts?: { cenario?: string; stacks?: number[]; posicoes?: string[]; evitar?: string[] }) =>
-    request<{ tables: PracticeTable[]; pedidas: number; servidas: number }>("/player/practice/tables", {
+    request<{ tables: PracticeTable[]; pedidas: number; servidas: number; cota?: CotaDaPratica | null }>("/player/practice/tables", {
       method: "POST",
       body: JSON.stringify({ n, cenario: opts?.cenario, stacks: opts?.stacks,
                              posicoes: opts?.posicoes, evitar: opts?.evitar }),
@@ -4030,6 +4065,46 @@ export interface FounderProgram {
   resumo: { total: number; honrando: number; silenciosos: number; vencendo_em_30d: number };
 }
 
+/** Uma linha do plano de importação do SharkScope. */
+export interface LinhaSharkscope {
+  quando: string;
+  torneio: string;
+  buy_in: number;
+  premio: number;
+  lucro: number;
+  colocacao: number | null;
+  field: number | null;
+  freeroll: boolean;
+  entradas: number;
+  /** por qual chave o pareamento casou: `dia+colocacao`, `dia+premio` ou `dia+buy_in` */
+  casou_por: string | null;
+  motivo: string | null;
+  torneio_id: string | null;
+  torneio_db_id: number | null;
+}
+
+/**
+ * O plano do importador. As cinco listas são o que o admin precisa ver ANTES de aplicar.
+ *
+ * `nossos_sem_correspondencia` é a que mais rendeu: foi por ela que a comparação de 19/09 achou
+ * 7 linhas de PartyPoker com 1 e 3 mãos que o SharkScope não conhece. Fragmentos do parser, não
+ * torneios (AY-46).
+ */
+export interface PlanoSharkscope {
+  user_id: number;
+  origem: string;
+  aplicado: boolean;
+  atualizar: LinhaSharkscope[];
+  iguais: LinhaSharkscope[];
+  protegidos: LinhaSharkscope[];
+  sem_par: LinhaSharkscope[];
+  nossos_sem_correspondencia: {
+    id: number; tournament_id: string; nome: string | null; quando: string; maos: number | null;
+  }[];
+  atualizados?: number;
+  falhos?: number;
+}
+
 export const adminDashboard = {
   stats: () => request<AdminStats>("/admin/dashboard"),
 
@@ -4250,6 +4325,19 @@ export const adminDashboard = {
     }),
 
   gtoWorkerStatus: () => request<GtoWorkerStatus>("/admin/gto/worker-status"),
+
+  /**
+   * Importa o RESULTADO de torneios a partir do JSON do SharkScope.
+   *
+   * `aplicar` é OPCIONAL e falso por padrão de propósito: a chamada seca devolve o plano e não
+   * escreve nada, e é o MESMO plano que a chamada molhada executa. Quem chamar sem pensar faz a
+   * coisa segura.
+   */
+  importarSharkscope: (userId: number, payload: unknown, aplicar = false) =>
+    request<PlanoSharkscope>("/admin/importar-sharkscope", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, payload, aplicar }),
+    }),
   /** AY-28: reaproveitamento do acervo por torneio novo, semana a semana, e cobertura por semelhanca */
   solverAproveitamento: (dias = 56) => request<SolverAproveitamento>(`/admin/solver/aproveitamento?dias=${dias}`),
   gtoHandQueue: () => request<{ queue: GtoHandRequest[]; counts: Record<string, number> }>("/admin/gto/hand-queue"),

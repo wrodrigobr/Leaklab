@@ -6,7 +6,7 @@ import {
   GraduationCap, X, Check, MessageSquarePlus, Trash2, AlertTriangle,
   Cpu, CircleDot, Lightbulb, Send, Megaphone, Mail, MailCheck,
   TrendingUp, Zap, CalendarClock, ThumbsUp, ThumbsDown, Sparkles, Timer, Download,
-  Handshake
+  Handshake, FileJson
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { HudHeader } from "@/components/hud/HudHeader";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { adminDashboard, AdminUser, AdminCoachStudent, CoachApplication, support, subscription } from "@/lib/api";
 import { toast } from "sonner";
 import { AdminSidebar, AdminSection, NavGroup } from "@/components/admin/AdminSidebar";
+import { SharkscopeTab } from "@/components/admin/SharkscopeTab";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { FinanceCockpit } from "@/components/admin/FinanceCockpit";
 import { CoachesTab } from "@/components/admin/CoachesTab";
@@ -1864,6 +1865,7 @@ const SECTION_TITLE: Record<AdminSection, { title: string; sub: string }> = {
   "gto-worker": { title: "GTO Worker",     sub: "Monitoramento do worker e cobertura GTO." },
   challenge:    { title: "Desafio do Dia", sub: "Curadoria do pool de spots. Só aprovado vai ao ar (gabarito com certeza)." },
   tournaments:  { title: "Torneios",       sub: "Torneios de todos os usuários. Baixe o hand history cru (.txt) para reimportar e reproduzir um bug reportado." },
+  sharkscope:   { title: "SharkScope",     sub: "Completa o financeiro de torneios a partir do JSON do SharkScope. Não traz mãos, e nunca sobrescreve resultado vindo do arquivo da sala." },
   logs:         { title: "Logs",           sub: "Últimas importações de torneios." },
 };
 
@@ -1940,6 +1942,7 @@ const AdminDashboard = () => {
         { id: "gto-worker",  label: "GTO Worker",  icon: Cpu, dot: workerDot },
         { id: "challenge",   label: "Desafio",     icon: CalendarClock },
         { id: "tournaments", label: "Torneios",    icon: Download },
+        { id: "sharkscope",  label: "SharkScope",   icon: FileJson },
         { id: "logs",        label: "Logs",        icon: Activity },
       ],
     },
@@ -1978,6 +1981,7 @@ const AdminDashboard = () => {
             {section === "gto-worker"   && <GtoWorkerTab />}
             {section === "challenge"    && <ChallengeTab />}
             {section === "tournaments"  && <TournamentsTab />}
+            {section === "sharkscope"   && <SharkscopeTab />}
             {section === "logs"         && <LogsTab />}
           </div>
         </div>

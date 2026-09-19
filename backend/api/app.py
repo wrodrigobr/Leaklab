@@ -753,7 +753,19 @@ def me():
         if coach_row:
             coach_username = coach_row['username']
     quota = get_quota_status(g.user['id'])
+    # Spots do Pratica usados no mes. Conta direta, e nao `cota_da_pratica()`, porque aquela
+    # chamaria `get_quota_status` de novo -- o plano ja esta aqui em cima. O relogio e o MESMO
+    # (`inicio_do_mes` + `contagem_desde`), que e o que impede a tela de contar um mes e o portao
+    # outro. Contador nunca derruba o /auth/me.
+    try:
+        from leaklab.cota_da_pratica import inicio_do_mes
+        from leaklab.historico_de_pratica import contagem_desde
+        practice_usados = contagem_desde(g.user['id'], inicio_do_mes())
+    except Exception:
+        app.logger.exception('me: falha ao contar spots do Pratica (user=%s)', g.user['id'])
+        practice_usados = None
     return jsonify({
+        'practice_spots_used':  practice_usados,
         'user_id':              g.user['id'],
         'username':             g.user['username'],
         'email':                g.user['email'],
@@ -3988,11 +4000,23 @@ def practice_tables():
     inteira em busca dos campos de veredito.
     """
     from leaklab.pratica_preflop import mesas
+    from leaklab.cota_da_pratica import cota as cota_da_pratica, mesas_permitidas
     body = request.get_json(silent=True) or {}
-    try:
-        n = int(body.get('n') or 1)
-    except (TypeError, ValueError):
-        n = 1
+
+    # A cota antes de montar: com o mes esgotado nao ha por que gastar sorteio de spot. A resposta
+    # sai 200 com a lista VAZIA e a cota do lado, e nao um erro: a tela fecha a sessao com o
+    # relatorio, que e o principio que o Free ja segue no treino avulso ("boletim, nao parede").
+    c = cota_da_pratica(g.user_id)
+    if c['esgotado']:
+        return jsonify({'tables': [], 'pedidas': 0, 'servidas': 0, 'cota': c})
+
+    # Duas travas, e a segunda importa mais do que parece: alem do teto de mesas do plano, o
+    # numero de mesas nunca passa dos spots que RESTAM no mes. Sem isso, o jogador com 1 spot
+    # sobrando abriria 2 mesas e a segunda seria recusada no meio da rodada, ja com a mao na
+    # tela -- a cota chegando como erro em vez de como limite.
+    n = mesas_permitidas(body.get('n'), c['mesas'])
+    if c['spots_restantes'] is not None:
+        n = max(1, min(n, int(c['spots_restantes'])))
     stacks = body.get('stacks') or None
     if stacks:
         try:
@@ -4009,7 +4033,7 @@ def practice_tables():
         app.logger.exception('practice: falha ao montar mesas (user=%s)', g.user_id)
         return jsonify({'tables': [], 'erro': 'indisponivel'}), 503
     # Menos mesas do que o pedido e informacao, nao acidente: com filtro estreito o pool acaba.
-    return jsonify({'tables': out, 'pedidas': max(1, min(int(n or 1), 4)), 'servidas': len(out)})
+    return jsonify({'tables': out, 'pedidas': n, 'servidas': len(out), 'cota': c})
 
 
 @app.route('/player/practice/grade', methods=['POST'])
@@ -4017,9 +4041,17 @@ def practice_tables():
 def practice_grade():
     """Corrige UMA mesa. Mesma regua e mesmo texto do exercicio avulso da Academia."""
     from leaklab.pratica_preflop import corrigir
+    from leaklab.cota_da_pratica import cota as cota_da_pratica
     body = request.get_json(force=True) or {}
     spot = body.get('spot') or {}
     acao = (body.get('action') or '').lower()
+
+    # O portao REAL da cota mora aqui, e nao no /tables. Corrigir e o que gasta: um cliente podia
+    # pedir mesa uma vez e corrigir mil vezes, e o teto de mesas nao tem nada a ver com isso.
+    # 403 com codigo, para a tela distinguir "acabou a cota" de "o servidor falhou".
+    antes = cota_da_pratica(g.user_id)
+    if antes['esgotado']:
+        return jsonify({'erro': 'cota_esgotada', 'cota': antes}), 403
     try:
         res = corrigir(spot, acao)
     except Exception:
@@ -4039,6 +4071,15 @@ def practice_grade():
     except Exception:
         app.logger.exception('practice: falha ao gravar no historico (user=%s)', g.user_id)
         res['historico_id'] = None
+
+    # A cota DEPOIS de gravar, recontada, porque e a linha gravada que conta. Falha ao gravar
+    # tambem nao cobra a cota, e isso e de proposito: o erro e nosso, e a duvida fica a favor do
+    # jogador -- que ja esta com a mao respondida na tela.
+    try:
+        res['cota'] = cota_da_pratica(g.user_id)
+    except Exception:
+        app.logger.exception('practice: falha ao ler a cota (user=%s)', g.user_id)
+        res['cota'] = None
     return jsonify(res)
 
 
@@ -12612,6 +12653,73 @@ def admin_clear_llm_cache():
     return jsonify({'ok': True, 'deleted_db': deleted, 'message': 'LLM cache limpo'})
 
 
+@app.route('/admin/importar-sharkscope', methods=['POST'])
+@require_admin
+def admin_importar_sharkscope():
+    """Importa o RESULTADO de torneios a partir do JSON do SharkScope. ADMIN por enquanto.
+
+    Corpo: `{"user_id": 3, "payload": <json do sharkscope>, "aplicar": false}`.
+
+    ── Seco por padrao, e o seco descreve a MESMA operacao ───────────────────────────────────
+
+    `aplicar` ausente ou falso devolve o PLANO e nao escreve nada. E o plano que o `aplicar`
+    executa e o mesmo objeto, produzido pela mesma funcao -- a casa ja pagou por um `--dry-run`
+    cujo filtro era mais frouxo que o da execucao real, e preview que descreve outra operacao e
+    pior que preview nenhum.
+
+    ── Por que ADMIN ────────────────────────────────────────────────────────────────────────
+
+    Pedido do dono: por enquanto ele captura o JSON e insere pelos jogadores. Quando isto virar
+    recurso do jogador, o portao muda de lugar, e a regra de confianca abaixo continua valendo.
+
+    ── O que este endpoint NAO faz ──────────────────────────────────────────────────────────
+
+    Nao busca no SharkScope. Nao guarda credencial. Recebe um JSON que alguem ja tinha em maos.
+    """
+    from leaklab.importador_sharkscope import planejar, aplicar as aplicar_plano, ORIGEM
+    from database.repositories import get_tournaments
+
+    body = request.get_json(silent=True) or {}
+    try:
+        alvo = int(body.get('user_id') or 0)
+    except (TypeError, ValueError):
+        alvo = 0
+    payload = body.get('payload')
+    if not alvo or not isinstance(payload, dict):
+        return jsonify({'error': 'Informe `user_id` e `payload` (o JSON do SharkScope).'}), 400
+
+    torneios = get_tournaments(alvo) or []
+    plano = planejar(alvo, payload, torneios)
+
+    def resumo(r):
+        t = r.get('par') or {}
+        return {'quando': r['quando'].isoformat(), 'torneio': r['nome'], 'buy_in': r['buy_in'],
+                'premio': r['premio'], 'lucro': r['lucro'], 'colocacao': r['colocacao'],
+                'field': r['field'], 'freeroll': r['freeroll'], 'entradas': r['entradas'],
+                'casou_por': r.get('chave'), 'motivo': r.get('motivo'),
+                'torneio_id': t.get('tournament_id'), 'torneio_db_id': t.get('id')}
+
+    saida = {
+        'user_id': alvo, 'origem': ORIGEM, 'aplicado': False,
+        'atualizar':  [resumo(r) for r in plano['atualizar']],
+        'iguais':     [resumo(r) for r in plano['iguais']],
+        'protegidos': [resumo(r) for r in plano['protegidos']],
+        'sem_par':    [resumo(r) for r in plano['sem_par']],
+        # Os torneios que o jogador tem e o JSON nao conhece. Foi por esta lista que a
+        # comparacao de 19/09 achou 7 linhas de PartyPoker com 1 e 3 maos que o SharkScope nao
+        # conhece -- fragmentos do parser, nao torneios.
+        'nossos_sem_correspondencia': [
+            {'id': t.get('id'), 'tournament_id': t.get('tournament_id'),
+             'nome': t.get('tournament_name'), 'quando': str(t.get('played_at'))[:10],
+             'maos': t.get('hands_count')}
+            for t in plano['torneios_sem_resultado']],
+    }
+    if body.get('aplicar') is True:
+        saida.update(aplicar_plano(alvo, plano))
+        saida['aplicado'] = True
+    return jsonify(saida)
+
+
 @app.route('/support/contact', methods=['POST'])
 @require_auth
 def support_contact():
@@ -12754,7 +12862,7 @@ def not_found(_): return jsonify({'error': 'Rota não encontrada'}), 404
 
 
 def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None,
-                                user_id: int = None) -> bool:
+                                user_id: int = None, prioridade: int = None) -> bool:
     """Enfileira o spot postflop desta decisão no solver. True se ele está de fato na fila.
 
     Existe porque o contador `queued` do processador de pedidos MENTIA. O ramo do mismatch
@@ -12811,7 +12919,12 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None,
             pot_type    = spot.get('potType', ''),
             opener      = spot.get('preflopOpener', ''),
             threebettor = spot.get('preflop3bettor', ''),
-            n_ativos    = spot.get('nActiveOpponents'))
+            n_ativos    = spot.get('nActiveOpponents'),
+            # AY-29: o TAMANHO DA MESA, que e o que converte o rotulo da sala no assento por
+            # jogadores atras. `nActiveOpponents` nao serve: e quantos seguem vivos NESTA street,
+            # e o assento se define na primeira orbita. Sem este argumento o payload volta ao
+            # comportamento legado, calado.
+            num_players = spot.get('nPlayers'))
         if not montado:
             return False
         h, payload = montado
@@ -12824,7 +12937,11 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None,
                 _plano = ((_gubi(user_id) or {}).get('plan'))
             except Exception:
                 _plano = None
-        return bool(enqueue_solver_spot(h, payload, priority=_priority(street, _plano),
+        # `prioridade` explicita existe para o reparo de assento (AY-29b), que enfileira no PORAO
+        # (0, abaixo ate do lote de import) e so deve consumir capacidade ociosa. Sem o parametro,
+        # o calculo de sempre: shortest-job-first com o Pro furando a fila.
+        _prio = _priority(street, _plano) if prioridade is None else int(prioridade)
+        return bool(enqueue_solver_spot(h, payload, priority=_prio,
                                         tournament_id=tournament_db_id))
     except Exception:
         log.exception('falha ao enfileirar spot da decisao (street=%s)', di.get('street'))
@@ -13884,9 +14001,22 @@ def _solver_queue_worker_loop():
             conn.execute("UPDATE gto_solver_queue SET status='pending' WHERE status='running' AND requested_at < datetime('now', '-10 minutes')")
             conn.commit()
             # acesso por NOME (dict) — em prod (Postgres/RealDictCursor) a linha é dict, não tupla.
-            _pr = _f1(conn, "SELECT COUNT(*) AS n FROM gto_solver_queue WHERE status='pending'")
-            pending = (dict(_pr).get('n', 0) if _pr else 0) or 0
+            # Duas contagens na MESMA ida ao banco: a fila toda e a parte ORGANICA (prioridade
+            # acima do porao). A segunda e o que abre a janela de carona do reparo de assento:
+            # ele so trabalha quando o banco ja estaria acordado por causa de alguem, porque o
+            # Neon e cobrado por compute e escala a zero quando ninguem usa.
+            _pr = _f1(conn, "SELECT COUNT(*) AS n, "
+                            "SUM(CASE WHEN priority > 0 THEN 1 ELSE 0 END) AS organicos "
+                            "FROM gto_solver_queue WHERE status='pending'")
+            _prd = dict(_pr) if _pr else {}
+            pending = (_prd.get('n', 0) or 0)
             conn.close()
+            if (_prd.get('organicos') or 0) > 0:
+                try:
+                    from leaklab.reparo_do_assento import marcar_atividade_organica
+                    marcar_atividade_organica()
+                except Exception:
+                    pass
             # Promoção RODA A CADA TICK, não só com a fila global vazia: com tráfego Pro a fila
             # nunca drena por completo, mas os 3 torneios de um free podem ter drenado — a vaga
             # dele abre agora. Barato com a waitlist vazia (um SELECT DISTINCT).
@@ -13908,6 +14038,28 @@ def _solver_queue_worker_loop():
             _reconcile_drained_tournaments()
         except Exception:
             log.exception("reconcile drained tournaments error")
+        # ── Reparo do assento antigo (AY-29b), SÓ com a fila vazia ────────────────────────────
+        #
+        # Este é o único ponto do loop em que se sabe que não há nada de ninguém esperando: o
+        # ramo acima já devolveu (`continue`) enquanto houvesse `pending > 0`.
+        #
+        # Três coisas, pedidas pelo dono, que não são detalhe:
+        #   · entra no PORÃO (prioridade 0, abaixo do lote de import): qualquer spot de jogador
+        #     que chegue depois é servido antes, e o lote inteiro fica para trás;
+        #   · NÃO dispara solver novo — o `burst_do_solver` passou a contar só `priority > 0`,
+        #     então trabalho de fundo não cria box pago;
+        #   · desligado por padrão (`REPARO_ASSENTO_ENABLED`), como o win-back.
+        #
+        # O pior caso para um jogador é esperar UM solve do lote terminar, nunca o lote.
+        try:
+            from leaklab.reparo_do_assento import ligado as _reparo_ligado, enfileirar_lote
+            if _reparo_ligado():
+                _r = enfileirar_lote()
+                if _r.get('spots'):
+                    log.info("Reparo de assento: %s spots enfileirados no porao (%s torneios, "
+                             "%s pendentes)", _r['spots'], _r['torneios'], _r['pendentes_depois'])
+        except Exception:
+            log.exception("reparo de assento error")
         # Fila vazia → dorme até o próximo enqueue (event-driven); o timeout de 60s é só
         # varredura de segurança (reset de 'running' preso, retries).
         try:

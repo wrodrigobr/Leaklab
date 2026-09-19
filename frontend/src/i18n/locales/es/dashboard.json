@@ -150,7 +150,7 @@
     "empty": "Importa torneos para activar el análisis de confianza de la IA."
   },
   "leaks": {
-    "tooltip": "Plan de entrenamiento de tus leaks: progreso en el Ghost Table, tendencia y atajo para estudiar cada uno, ordenados por impacto de EV. El diagnóstico de dónde pierdes EV está en el Leak Finder.",
+    "tooltip": "Plan de entrenamiento de tus leaks: progreso en el Ghost Table, tendencia y atajo para estudiar cada uno, ordenados por impacto de EV. El diagnóstico de dónde pierdes EV está en el Leak Finder. Los valores por mes son una proyección de tu volumen, no un extracto de caja.",
     "title": "Cola de Entrenamiento",
     "study": "Estudiar",
     "studyLabel": "Estudiar leak {{spot}}",
@@ -338,8 +338,8 @@
   },
   "leakFinder": {
     "title": "Leak Finder",
-    "tooltip": "Tus leaks priorizados por EV PERDIDO (big blinds dejados en la mesa), no por cantidad de errores. Arriba es donde más EV se escapa, empezá por ahí.",
-    "headline_label": "dejados en la mesa en {{n}} spots con fugas",
+    "tooltip": "Tus leaks priorizados por EV perdido en big blinds, no por cantidad de errores. Arriba es donde más EV se escapa, empezá por ahí. El total sirve para ordenar, no es un extracto: un leak con pocas ocurrencias todavía es hipótesis, no diagnóstico.",
+    "headline_label": "de EV perdido en {{n}} spots",
     "spots_title": "Mayores leaks por EV",
     "idealPrefix": "ideal:",
     "coaching": "Atacá de arriba hacia abajo: corregir el leak nº 1 vale más que varios pequeños. Cada fila es un spot recurrente, revisalo en el Replayer y entrenalo en el Ghost Table.",
@@ -872,7 +872,8 @@
     "analises": "Análisis GrindLab",
     "aria": "Menú de la cuenta",
     "upgrade": "Mejorar a Pro",
-    "docs": "Documentación"
+    "docs": "Documentación",
+    "pratica": "Práctica (spots/mes)"
   },
   "quota": {
     "titulo": "Te acercas al límite mensual",
@@ -889,7 +890,7 @@
     "sub": "Terminaste tu entrenamiento gratis de hoy. Mirá cómo fue:",
     "precisao": "Precisión",
     "sequencia": "Mejor racha",
-    "bbNaMesa": "EV dejado en la mesa (bb)",
+    "bbNaMesa": "EV perdido (bb)",
     "diasSeguidos": "{{n}} días seguidos",
     "porCenario": "Acierto por spot",
     "noPro": "Con Pro también entrenás:",

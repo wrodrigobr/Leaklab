@@ -60,7 +60,7 @@
     "gtoMixedTip": "Estrategia mixta: frecuencia GTO 30–60%, acción válida, pero no dominante en el rango",
     "gtoMinorTip": "Desvío leve: frecuencia GTO 10–30%, jugada infrecuente en GTO, pero defendible",
     "gtoCriticalTip": "Desvío crítico: frecuencia GTO < 10%, jugada raramente justificada por el solver",
-    "evLossTip": "EV perdido vs la mejor jugada en esta mano, cuántos big blinds dejaste en la mesa.",
+    "evLossTip": "Diferencia de EV entre tu jugada y la mejor del solver, en big blinds. Es el tamaño del error dentro del modelo, no dinero que salió de tu bolsillo. Usalo para elegir qué decisión revisar primero.",
     "srcHeuristic": "Heurística",
     "srcGtoTip": "GTO Solver: frecuencias de equilibrio de Nash calculadas para este spot",
     "srcPreflopTip": "Preflop: rangos de apertura GTO por posición y stack depth",
@@ -524,7 +524,9 @@
     "spotMisto": {
       "label": "Spot Mixto",
       "tooltip": "Spot de estrategia mixta: el solver equilibra varias acciones aquí. Eso significa que no existe una única respuesta correcta: el GTO reparte la frecuencia entre las líneas para ser impredecible y no explotable. Cualquier línea con 10% o más es defendible."
-    }
+    },
+    "naoEhOrdem": "La frecuencia no es una orden. Una acción con 70% en el solver es la más común en el equilibrio, no un \"siempre\". Repetir solo la mayor frecuencia en todas las manos destruye el equilibrio que ella describe, y te vuelve previsible.",
+    "custoDeOportunidade": "Costo de oportunidad: −{{bb}} bb vs la línea de mayor EV"
   },
   "pkoTooltip": "Progressive Knockout (PKO), torneo con bounties. Sus ranges y umbrales GTO específicos pueden diferir de un MTT clásico.",
   "coachModo": {
