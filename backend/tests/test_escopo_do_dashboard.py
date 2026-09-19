@@ -52,7 +52,17 @@ def check(cond, msg):
         print("  FAIL: %s" % msg)
 
 
-UID = 501
+#: Id PROPRIO deste processo, e nao um numero fixo.
+#:
+#: Era `501` cravado. Em SQLite cada rodada ganha um arquivo novo e isso nunca incomodou; em
+#: POSTGRES o banco e o mesmo E o runner roda arquivos em PARALELO, entao o id fixo colide de duas
+#: formas: com a rodada anterior (que deixou a linha la) e com outro arquivo rodando agora. O
+#: primeiro caso derrubava o ARQUIVO INTEIRO no import, e ele sumia do relatorio sem ninguem
+#: notar -- 23 testes a menos em 3.166 nao chamam atencao. Achado em 19/09 comparando duas
+#: rodadas contra o Postgres local.
+#:
+#: A faixa alta evita esbarrar nos ids pequenos que outras fixtures usam.
+UID = 500000 + (os.getpid() % 90000)
 N_TORNEIOS = 10
 MAOS_POR_TORNEIO = 100
 
@@ -65,8 +75,29 @@ def _semear():
     subiu 280 torneios de 3 meses com `imported_at` espremido em 25 horas.
     """
     conn = get_conn()
+    # Limpa o proprio rastro ANTES de semear.
+    #
+    # Em SQLite cada rodada ganha um arquivo novo e este INSERT nunca colide. Em POSTGRES o banco
+    # e o MESMO entre rodadas: o `id` fixo 501 sobrevive, e a segunda rodada morria com
+    # `UniqueViolation: users_pkey` -- derrubando o ARQUIVO INTEIRO, que sumia do relatorio sem
+    # ninguem notar (23 testes a menos num total de 3.166 nao chamam atencao). Achado em 19/09
+    # comparando duas rodadas contra o Postgres local.
+    #
+    # `decisions` NAO tem `user_id`: ela pendura no torneio. A primeira versao desta limpeza
+    # tentou `DELETE FROM decisions WHERE user_id = ?` com um `except: pass` em volta, e no
+    # Postgres o erro ABORTA A TRANSACAO INTEIRA -- tudo depois falha com
+    # `InFailedSqlTransaction`, inclusive o INSERT do usuario. O `except` nao protege nada ali,
+    # e essa e uma cicatriz que a casa ja tinha. Ordem: decisoes, torneios, usuario.
+    conn.execute(_adapt("DELETE FROM decisions WHERE tournament_id IN "
+                        "(SELECT id FROM tournaments WHERE user_id = ?)"), (UID,))
+    conn.execute(_adapt("DELETE FROM tournaments WHERE user_id = ?"), (UID,))
+    conn.execute(_adapt("DELETE FROM users WHERE id = ?"), (UID,))
+    conn.commit()
     conn.execute(_adapt("INSERT INTO users (id, username, email, password_hash) VALUES (?,?,?,?)"),
-                 (UID, 'escopo', 'escopo@e.st', 'h'))
+                 # Nome e e-mail tambem UNICOS por rodada: os dois tem indice unico proprio, e
+                 # trocar so o `id` apenas mudou a colisao de `users_pkey` para
+                 # `users_username_key`. Consertar metade de uma unicidade e nao consertar.
+                 (UID, 'escopo_%d' % UID, 'escopo%d@e.st' % UID, 'h'))
     base = date(2026, 1, 1)
     base_imp = datetime(2026, 9, 3, 12, 0, 0)
     for i in range(1, N_TORNEIOS + 1):
