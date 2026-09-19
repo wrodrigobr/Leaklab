@@ -12862,7 +12862,7 @@ def not_found(_): return jsonify({'error': 'Rota não encontrada'}), 404
 
 
 def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None,
-                                user_id: int = None, prioridade: int = None) -> bool:
+                                user_id: int = None) -> bool:
     """Enfileira o spot postflop desta decisão no solver. True se ele está de fato na fila.
 
     Existe porque o contador `queued` do processador de pedidos MENTIA. O ramo do mismatch
@@ -12937,11 +12937,7 @@ def _enfileirar_spot_da_decisao(di: dict, facing: float, tournament_db_id=None,
                 _plano = ((_gubi(user_id) or {}).get('plan'))
             except Exception:
                 _plano = None
-        # `prioridade` explicita existe para o reparo de assento (AY-29b), que enfileira no PORAO
-        # (0, abaixo ate do lote de import) e so deve consumir capacidade ociosa. Sem o parametro,
-        # o calculo de sempre: shortest-job-first com o Pro furando a fila.
-        _prio = _priority(street, _plano) if prioridade is None else int(prioridade)
-        return bool(enqueue_solver_spot(h, payload, priority=_prio,
+        return bool(enqueue_solver_spot(h, payload, priority=_priority(street, _plano),
                                         tournament_id=tournament_db_id))
     except Exception:
         log.exception('falha ao enfileirar spot da decisao (street=%s)', di.get('street'))
@@ -14011,12 +14007,6 @@ def _solver_queue_worker_loop():
             _prd = dict(_pr) if _pr else {}
             pending = (_prd.get('n', 0) or 0)
             conn.close()
-            if (_prd.get('organicos') or 0) > 0:
-                try:
-                    from leaklab.reparo_do_assento import marcar_atividade_organica
-                    marcar_atividade_organica()
-                except Exception:
-                    pass
             # Promoção RODA A CADA TICK, não só com a fila global vazia: com tráfego Pro a fila
             # nunca drena por completo, mas os 3 torneios de um free podem ter drenado — a vaga
             # dele abre agora. Barato com a waitlist vazia (um SELECT DISTINCT).
@@ -14038,28 +14028,6 @@ def _solver_queue_worker_loop():
             _reconcile_drained_tournaments()
         except Exception:
             log.exception("reconcile drained tournaments error")
-        # ── Reparo do assento antigo (AY-29b), SÓ com a fila vazia ────────────────────────────
-        #
-        # Este é o único ponto do loop em que se sabe que não há nada de ninguém esperando: o
-        # ramo acima já devolveu (`continue`) enquanto houvesse `pending > 0`.
-        #
-        # Três coisas, pedidas pelo dono, que não são detalhe:
-        #   · entra no PORÃO (prioridade 0, abaixo do lote de import): qualquer spot de jogador
-        #     que chegue depois é servido antes, e o lote inteiro fica para trás;
-        #   · NÃO dispara solver novo — o `burst_do_solver` passou a contar só `priority > 0`,
-        #     então trabalho de fundo não cria box pago;
-        #   · desligado por padrão (`REPARO_ASSENTO_ENABLED`), como o win-back.
-        #
-        # O pior caso para um jogador é esperar UM solve do lote terminar, nunca o lote.
-        try:
-            from leaklab.reparo_do_assento import ligado as _reparo_ligado, enfileirar_lote
-            if _reparo_ligado():
-                _r = enfileirar_lote()
-                if _r.get('spots'):
-                    log.info("Reparo de assento: %s spots enfileirados no porao (%s torneios, "
-                             "%s pendentes)", _r['spots'], _r['torneios'], _r['pendentes_depois'])
-        except Exception:
-            log.exception("reparo de assento error")
         # Fila vazia → dorme até o próximo enqueue (event-driven); o timeout de 60s é só
         # varredura de segurança (reset de 'running' preso, retries).
         try:

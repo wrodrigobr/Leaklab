@@ -92,10 +92,10 @@ def _pending() -> int:
     Esta função decide GASTAR DINHEIRO: quando ela passa de `PENDING_ALTO`, um servidor extra é
     criado na Hetzner, cobrado por hora arredondada pra cima.
 
-    O reparo de assento (AY-29b) enfileira no PORÃO, prioridade 0, justamente para só consumir
-    capacidade ociosa. Contá-lo aqui faria trabalho de fundo, que não tem dono esperando,
-    disparar um box pago — o oposto do desenho, e o que o dono pediu explicitamente para não
-    acontecer ("quero usar o solver ocioso, mas não quero disparar novos solvers").
+    Trabalho de FUNDO (prioridade 0) nao tem dono esperando, e conta-lo aqui faria um lote de
+    manutencao disparar um box pago, o oposto do desenho e o que o dono pediu explicitamente
+    para nao acontecer. O mutirao do AY-29b nem passa por esta fila (ele resolve fora e
+    sincroniza depois), mas a invariante vale para qualquer lote futuro.
 
     Quem tem dono esperando entra com 5 a 18 (`gto_solver._priority`), e o lote de import com 1.
     Todos continuam contando. O corte é `> 0`, e o porão é o único que fica de fora.

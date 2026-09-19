@@ -240,9 +240,6 @@ SUITES = {
                   # Importador ADMIN do JSON do SharkScope: completa o financeiro dos
                   # torneios (buy_in em 8,9%% do acervo, profit em 6,7%%) sem assinatura Pro.
                   'test_importador_sharkscope.py',
-                  # AY-29b: o lote que repara o acervo antigo so consome sobra e NUNCA
-                  # faz o burst subir um servidor cobrado.
-                  'test_reparo_do_assento.py',
                   'test_hand_view.py',
                   'test_gto_comparison.py',
                   'test_gto_utils_comprehensive.py',

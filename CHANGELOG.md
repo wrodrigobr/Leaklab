@@ -5,6 +5,59 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## O reparo do assento sai do consumidor e vira mutirao fora do Neon (19/09)
+
+A rotina entregue algumas horas antes enfileirava 300 spots no porao e deixava o consumidor
+drenar, gravando no com no Neon. O dono perguntou o obvio que eu nao tinha respondido: "e com a
+variavel ativa o que vai acontecer? A ideia nao era armazenar no banco local os solves?".
+
+Nao era o que estava construido, e a pergunta expos um buraco: **a carona controlava o INICIO do
+lote, nao a duracao dele**. A 150-300 spots por hora (numero medido em 02/09 e escrito no
+`burst_do_solver`), 300 spots levam de uma a duas horas drenando. A janela de carona era de 15
+minutos. O lote comecava pegando carona e depois segurava o Neon acordado sozinho por horas, que
+e exatamente o que o dono pediu para nao acontecer.
+
+### O que saiu
+
+O gancho no `_solver_queue_worker_loop`, o modulo `reparo_do_assento`, o teste dele, o registro na
+suite e o parametro `prioridade` do enfileirador, que ficou sem chamador. **Fica** o corte por
+`priority > 0` no `burst_do_solver._pending()`: trabalho de fundo nao deve disparar servidor
+cobrado, e a invariante vale para qualquer lote futuro mesmo sem produtor hoje.
+
+### O que entrou: `scripts/mutirao_assento.py`
+
+Tres fases, e o Neon acorda so duas vezes:
+
+- `puxar` roda DENTRO do container (onde a `DATABASE_URL` mora) e devolve os payloads por stdout.
+  Nao escreve nada. Nenhuma credencial do Neon encosta na maquina do dev.
+- `resolver` roda na maquina local, contra o solver de PRODUCAO por tunel ssh, e guarda em SQLite
+  local. E a fase longa, e ela acontece com o Neon dormindo.
+- `empurrar` volta ao container e grava em blocos. **Seco por padrao.**
+
+**Baixa prioridade MEDIDA:** antes de cada solve o script pergunta ao `/health` do solver se
+`active_solves` e zero. Se producao estiver usando, espera. Sem resposta, nao avanca -- silencio
+nao e permissao. E isso nao custa uma consulta ao banco.
+
+A chave do solver e buscada por ssh em tempo de execucao e fica so na memoria do processo.
+
+### A trava que nasceu do primeiro teste real
+
+O primeiro lote puxou 8 spots, resolveu no solver de producao (3,4s o mais lento, zero falhas) e
+guardou tudo com a tabela por mao. **E os 8 estavam errados:** vieram com o ROTULO DA SALA.
+
+O `puxar` roda dentro do container, e o container esta no `397007b2`, que nao tem o conserto do
+AY-29. Codigo e assado na imagem: commitar aqui nao muda nada la (regra 4 da casa). Empurrar
+aquilo teria gravado nos legados no Neon achando que era conserto.
+
+O que pegou foi conferir o que ficou GUARDADO, em vez de aceitar o "8 de 8, zero falha" -- o
+numero bonito estava la. Agora, lote inteiro sem traducao faz o script RECUSAR, com a frase
+dizendo que falta o deploy. Os 8 foram descartados.
+
+**Consequencia de ordem:** o mutirao depende do deploy do conserto. Sem ele, nao ha payload
+traduzido para puxar.
+
+---
+
 ## Importador de resultado do SharkScope, e o que ele achou (19/09)
 
 O dono assinou o SharkScope e perguntou se dava para receber os resultados por la, em vez de
